@@ -46,8 +46,8 @@ function logout() {
 
 <template>
   <div class="app-shell" :class="{ 'app-shell--collapsed': collapsed }">
-    <aside class="sidebar">
-      <div class="brand">
+    <aside data-cy="desktop-sidebar" class="sidebar">
+      <div data-cy="sidebar-brand" class="brand">
         <div class="brand__mark">趣</div>
         <div v-if="!collapsed" class="brand__text">
           <strong>趣集</strong><span>文化活动协同管理平台</span>
@@ -78,7 +78,7 @@ function logout() {
       </div>
     </aside>
     <section class="app-main">
-      <header class="topbar">
+      <header data-cy="workspace-topbar" class="topbar">
         <div class="breadcrumb">
           <span>活动管理</span><span class="breadcrumb__sep">/</span><strong>当前工作空间</strong>
         </div>
@@ -119,7 +119,7 @@ function logout() {
   display: flex;
   align-items: center;
   gap: 10px;
-  min-height: 74px;
+  height: 64px;
   padding: 0 18px;
   border-bottom: 1px solid #e4e7ec;
 }
@@ -237,7 +237,7 @@ function logout() {
 }
 .topbar {
   display: flex;
-  height: 58px;
+  height: 64px;
   align-items: center;
   justify-content: space-between;
   gap: 20px;

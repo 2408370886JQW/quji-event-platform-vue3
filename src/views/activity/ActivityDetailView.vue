@@ -15,6 +15,7 @@ const detail = ref<ActivityDetail | null>(null)
 const tab = ref('overview')
 const materialDialog = ref(false)
 const materialStep = ref(0)
+const materialMode = ref<'filing' | 'upload'>('upload')
 const pendingMaterial = ref<MaterialItem | null>(null)
 const filing = reactive({
   name: '',
@@ -44,8 +45,12 @@ onMounted(async () => {
 })
 
 function openMaterial(item?: MaterialItem) {
-  pendingMaterial.value = item || null
-  materialStep.value = item?.name === '活动备案信息表' ? 0 : 1
+  const isFiling = item?.name === '活动备案信息表'
+  materialMode.value = isFiling ? 'filing' : 'upload'
+  pendingMaterial.value = isFiling
+    ? item
+    : item || detail.value?.materials.find((material) => material.name !== '活动备案信息表') || null
+  materialStep.value = 0
   materialDialog.value = true
 }
 function openMaterialFromTable(row: unknown) {
@@ -166,8 +171,9 @@ function exportSummary() {
                 <div>
                   <div class="q-eyebrow">单场活动材料</div>
                   <h2 class="q-title">活动备案与安全协同材料</h2>
-                  <p class="q-description">
-                    以单场活动为单位归集基础信息、场地协作和现场安全材料；不同活动的受理机关与清单可能不同，请以属地当前要求为准。
+                  <p class="q-description semantic-lines">
+                    <span>以单场活动为单位归集基础信息 场地协作和现场安全材料</span>
+                    <span>不同活动的受理机关与清单可能不同 请以属地当前要求为准</span>
                   </p>
                 </div>
                 <div class="material-actions">
@@ -315,68 +321,151 @@ function exportSummary() {
               </section></el-tab-pane
             >
           </el-tabs>
-          <el-dialog v-model="materialDialog" title="活动材料办理" width="680px" :close-on-click-modal="false"
-            ><el-steps :active="materialStep" finish-status="success" simple
-              ><el-step title="基础信息" /><el-step title="上传与核对" /><el-step title="完成"
-            /></el-steps>
+          <el-dialog
+            v-model="materialDialog"
+            class="material-dialog"
+            title="活动材料办理"
+            width="820px"
+            :close-on-click-modal="false"
+          >
+            <el-steps :active="materialStep" finish-status="success" simple>
+              <el-step :title="materialMode === 'filing' ? '基础信息' : '选择材料'" />
+              <el-step title="上传与核对" />
+              <el-step title="完成" />
+            </el-steps>
             <div class="dialog-body">
-              <template v-if="materialStep === 0"
-                ><p>
-                  以下字段参考备案表样本组织。是否需要向哪个机关提交、是否属于必填，以活动所在地当前公开清单为准。
+              <template v-if="materialStep === 0 && materialMode === 'filing'">
+                <p class="semantic-lines">
+                  <span>以下字段参考备案表样本组织</span>
+                  <span>请在活动所在地按当前公开清单确认提交机关和必填范围</span>
                 </p>
-                <el-form label-position="top" class="filing-form"
-                  ><el-row :gutter="16"
-                    ><el-col :span="12"
-                      ><el-form-item label="活动名称"
-                        ><el-input v-model="filing.name" /></el-form-item></el-col
-                    ><el-col :span="12"
-                      ><el-form-item label="申请时间"
-                        ><el-input v-model="filing.date" /></el-form-item></el-col
-                    ><el-col :span="12"
-                      ><el-form-item label="起止时间"
-                        ><el-input v-model="filing.dateRange" /></el-form-item></el-col
-                    ><el-col :span="12"
-                      ><el-form-item label="活动地点"
-                        ><el-input v-model="filing.venue" /></el-form-item></el-col
-                    ><el-col :span="12"
-                      ><el-form-item label="场地额定容量"
-                        ><el-input v-model="filing.capacity" /></el-form-item></el-col
-                    ><el-col :span="12"
+                <el-form label-position="top" class="filing-form">
+                  <el-row :gutter="16">
+                    <el-col :span="12"
+                      ><el-form-item label="活动名称"><el-input v-model="filing.name" /></el-form-item
+                    ></el-col>
+                    <el-col :span="12"
+                      ><el-form-item label="申请时间"><el-input v-model="filing.date" /></el-form-item
+                    ></el-col>
+                    <el-col :span="12"
+                      ><el-form-item label="起止时间"><el-input v-model="filing.dateRange" /></el-form-item
+                    ></el-col>
+                    <el-col :span="12"
+                      ><el-form-item label="活动地点"><el-input v-model="filing.venue" /></el-form-item
+                    ></el-col>
+                    <el-col :span="12"
+                      ><el-form-item label="场地额定容量"><el-input v-model="filing.capacity" /></el-form-item
+                    ></el-col>
+                    <el-col :span="12"
                       ><el-form-item label="拟参加活动人数"
-                        ><el-input v-model="filing.attendees" /></el-form-item></el-col></el-row
-                  ><el-form-item label="活动内容"
-                    ><el-input
-                      v-model="filing.content"
-                      type="textarea"
-                      :rows="3" /></el-form-item></el-form></template
-              ><template v-else-if="materialStep === 1"
-                ><p>上传经确认的材料版本，系统会保留文件名、版本、更新时间和操作人。</p>
-                <el-upload drag :auto-upload="false"
-                  ><el-icon class="el-icon--upload"><UploadFilled /></el-icon>
-                  <div class="el-upload__text">将文件拖到此处，或 <em>点击选择文件</em></div>
-                  <template #tip
-                    ><div class="el-upload__tip">支持 PDF、Word、图片等常见材料格式</div></template
-                  ></el-upload
-                ><el-checkbox style="margin-top: 18px"
-                  >我确认已核对基础信息，并理解平台保存的是资料协同记录，不代表已向任何机关提交或取得许可。</el-checkbox
-                ></template
-              ><template v-else
-                ><div class="save-complete">
+                        ><el-input v-model="filing.attendees" /></el-form-item
+                    ></el-col>
+                  </el-row>
+                  <el-form-item label="活动内容"
+                    ><el-input v-model="filing.content" type="textarea" :rows="3"
+                  /></el-form-item>
+                </el-form>
+              </template>
+              <template v-else-if="materialStep === 0">
+                <p>选择材料后可在右侧查看当前状态 文件版本 更新时间和操作人员</p>
+                <div class="material-picker">
+                  <div class="material-options">
+                    <button
+                      v-for="item in detail.materials.filter(
+                        (material) => material.name !== '活动备案信息表',
+                      )"
+                      :key="item.id"
+                      data-cy="material-option"
+                      type="button"
+                      :aria-pressed="pendingMaterial?.id === item.id"
+                      :class="[
+                        'material-option',
+                        { 'material-option--active': pendingMaterial?.id === item.id },
+                      ]"
+                      @click="pendingMaterial = item"
+                    >
+                      <span
+                        ><strong>{{ item.name }}</strong
+                        ><small>{{ item.note }}</small></span
+                      >
+                      <StatusTag :status="item.status" />
+                    </button>
+                  </div>
+                  <aside v-if="pendingMaterial" data-cy="material-details" class="material-details">
+                    <span class="material-details__eyebrow">材料详情</span>
+                    <h3>{{ pendingMaterial.name }}</h3>
+                    <dl>
+                      <div>
+                        <dt>协同模块</dt>
+                        <dd>{{ pendingMaterial.group }}</dd>
+                      </div>
+                      <div>
+                        <dt>当前状态</dt>
+                        <dd>{{ pendingMaterial.status }}</dd>
+                      </div>
+                      <div>
+                        <dt>最近更新</dt>
+                        <dd>
+                          {{ pendingMaterial.updatedAt === '—' ? '尚未上传' : pendingMaterial.updatedAt }}
+                        </dd>
+                      </div>
+                      <div>
+                        <dt>操作人员</dt>
+                        <dd>{{ pendingMaterial.owner }}</dd>
+                      </div>
+                    </dl>
+                    <div class="current-file">
+                      <span>当前文件</span>
+                      <strong>{{
+                        pendingMaterial.status === '待准备'
+                          ? '暂未上传文件'
+                          : `${pendingMaterial.name}_2026版.pdf`
+                      }}</strong>
+                      <small>{{
+                        pendingMaterial.status === '待准备'
+                          ? '选择后进入下一步上传文件'
+                          : '版本 v1.2 已关联活动档案'
+                      }}</small>
+                    </div>
+                  </aside>
+                </div>
+              </template>
+              <template v-else-if="materialStep === 1">
+                <p>上传经确认的材料版本 系统会保留文件名 版本 更新时间和操作人员</p>
+                <el-upload drag :auto-upload="false">
+                  <el-icon class="el-icon--upload"><UploadFilled /></el-icon>
+                  <div class="el-upload__text">将文件拖到此处 或 <em>点击选择文件</em></div>
+                  <template #tip><div class="el-upload__tip">支持 PDF Word 图片等常见材料格式</div></template>
+                </el-upload>
+                <el-checkbox style="margin-top: 18px"
+                  >我确认已核对基础信息并理解平台保存的是资料协同记录
+                  不代表已向任何机关提交或取得许可</el-checkbox
+                >
+              </template>
+              <template v-else>
+                <div class="save-complete">
                   <el-icon><CircleCheckFilled /></el-icon>
                   <h3>材料已写入活动档案</h3>
-                  <p>后续可继续补充协作材料、上传回执或记录补正通知。</p>
-                </div></template
-              >
+                  <p>后续可继续补充协作材料 上传回执或记录补正通知</p>
+                </div>
+              </template>
             </div>
-            <template #footer
-              ><el-button @click="materialDialog = false">{{
+            <template #footer>
+              <el-button @click="materialDialog = false">{{
                 materialStep === 2 ? '返回活动资料' : '取消'
-              }}</el-button
-              ><el-button v-if="materialStep === 0" type="primary" @click="materialStep = 1">下一步</el-button
-              ><el-button v-if="materialStep === 1" type="primary" @click="saveMaterial"
+              }}</el-button>
+              <el-button
+                v-if="materialStep === 0"
+                type="primary"
+                :disabled="!pendingMaterial"
+                @click="materialStep = 1"
+                >下一步</el-button
+              >
+              <el-button v-if="materialStep === 1" type="primary" @click="saveMaterial"
                 >保存至活动档案</el-button
-              ></template
-            ></el-dialog
+              >
+            </template>
+          </el-dialog>
           ></template
         ></template
       ></el-skeleton
@@ -490,6 +579,121 @@ function exportSummary() {
 .material-guide span {
   color: #475467;
 }
+.semantic-lines span {
+  display: block;
+}
+.material-picker {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 248px;
+  align-items: start;
+  gap: 16px;
+  margin-top: 18px;
+}
+.material-options {
+  display: grid;
+  gap: 10px;
+}
+.material-option {
+  display: flex;
+  width: 100%;
+  min-width: 0;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 14px;
+  padding: 14px 16px;
+  border: 1px solid #e4e7ec;
+  border-radius: 8px;
+  background: #fff;
+  color: #344054;
+  cursor: pointer;
+  text-align: left;
+}
+.material-option:hover {
+  border-color: #98a2b3;
+}
+.material-option--active {
+  border-color: #1d5fc6;
+  background: #eff6ff;
+  box-shadow: 0 0 0 1px #1d5fc6;
+}
+.material-option > span {
+  display: grid;
+  min-width: 0;
+  gap: 5px;
+}
+.material-option strong {
+  color: #172033;
+  font-size: 15px;
+}
+.material-option small {
+  color: #667085;
+  font-size: 13px;
+  line-height: 1.55;
+}
+.material-details {
+  position: sticky;
+  top: 0;
+  padding: 16px;
+  border: 1px solid #e4e7ec;
+  border-radius: 8px;
+  background: #f8fafc;
+  color: #344054;
+  text-align: left;
+}
+.material-details__eyebrow,
+.current-file > span {
+  color: #667085;
+  font-size: 12px;
+  font-weight: 700;
+}
+.material-details h3 {
+  margin: 5px 0 0;
+  color: #172033;
+  font-size: 16px;
+  line-height: 1.5;
+}
+.material-details dl {
+  display: grid;
+  gap: 12px;
+  margin: 16px 0 0;
+  padding-top: 16px;
+  border-top: 1px solid #e4e7ec;
+}
+.material-details dl > div {
+  display: grid;
+  gap: 4px;
+}
+.material-details dt {
+  color: #667085;
+  font-size: 12px;
+  font-weight: 700;
+}
+.material-details dd {
+  margin: 0;
+  color: #344054;
+  font-size: 13px;
+  line-height: 1.5;
+}
+.current-file {
+  display: grid;
+  gap: 4px;
+  margin-top: 16px;
+  padding: 12px;
+  border: 1px solid #e4e7ec;
+  border-radius: 6px;
+  background: #fff;
+}
+.current-file strong {
+  overflow-wrap: anywhere;
+  color: #172033;
+  font-size: 13px;
+  line-height: 1.5;
+}
+.current-file small {
+  color: #667085;
+  font-size: 12px;
+  line-height: 1.5;
+}
 .conditional {
   display: inline-block;
   margin-left: 7px;
@@ -585,6 +789,12 @@ function exportSummary() {
   }
   .activity-hero h1 {
     font-size: 23px;
+  }
+  .material-picker {
+    grid-template-columns: 1fr;
+  }
+  .material-details {
+    position: static;
   }
 }
 </style>
