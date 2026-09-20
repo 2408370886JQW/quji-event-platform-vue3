@@ -5,7 +5,13 @@ import { UploadFilled } from '@element-plus/icons-vue'
 import StatusTag from '@/components/StatusTag.vue'
 import type { MaterialItem } from '@/types/platform'
 
-const materials = ref<MaterialItem[]>([
+type SubjectMaterial = MaterialItem & {
+  preview?: string
+  previewAlt?: string
+  guide?: string
+}
+
+const materials = ref<SubjectMaterial[]>([
   {
     id: 'org-1',
     name: '营业执照或主体登记证明',
@@ -14,6 +20,9 @@ const materials = ref<MaterialItem[]>([
     updatedAt: '2026-06-10 14:15',
     owner: '林洁',
     note: '有效期信息已登记',
+    preview: '/materials/quji-business-license-demo.webp',
+    previewAlt: '营业执照或主体登记证明脱敏示意图',
+    guide: '上传清晰完整的证照页面 确保证照名称 主体名称和有效期可辨认',
   },
   {
     id: 'org-2',
@@ -23,6 +32,9 @@ const materials = ref<MaterialItem[]>([
     updatedAt: '—',
     owner: '主办方',
     note: '首次入驻请补充经办授权关系',
+    preview: '/materials/quji-authorization-demo.webp',
+    previewAlt: '法定代表人或经办授权材料脱敏示意图',
+    guide: '授权书与经办人证明应相互对应 涉及身份信息时按授权范围提交',
   },
   {
     id: 'org-3',
@@ -41,17 +53,23 @@ const materials = ref<MaterialItem[]>([
     updatedAt: '—',
     owner: '主办方',
     note: '仅在活动性质或属地规则要求时上传',
+    preview: '/materials/quji-business-permit-demo.webp',
+    previewAlt: '经营性业务相关许可脱敏示意图',
+    guide: '仅在活动性质或属地规则要求时准备 上传前核对许可范围和有效期',
     conditional: true,
   },
 ])
 const dialog = ref(false)
-const selected = ref<MaterialItem | null>(null)
-function open(item?: MaterialItem) {
-  selected.value = item || null
+const selected = ref<SubjectMaterial | null>(null)
+function open(item?: SubjectMaterial) {
+  selected.value = item || materials.value[0] || null
   dialog.value = true
 }
 function openFromTable(row: unknown) {
-  open(row as MaterialItem)
+  open(row as SubjectMaterial)
+}
+function selectMaterial(name: string) {
+  selected.value = materials.value.find((item) => item.name === name) || null
 }
 function save() {
   if (selected.value) {
@@ -71,7 +89,8 @@ function save() {
         <div class="q-eyebrow">主办方主体档案</div>
         <h1 class="q-title">首次入驻与主体材料</h1>
         <p class="q-description">
-          主办方先建立可复用主体档案，再在每场活动中引用对应材料。营业执照、授权材料、安全责任人信息和相关资质均从这里开始管理。
+          <span>主办方先建立可复用主体档案 每场活动直接引用对应材料</span>
+          <span>首次入驻与主体材料 安全责任人信息和相关资质都从这里开始管理</span>
         </p>
       </div>
       <el-button type="primary" @click="open()">上传主体材料</el-button>
@@ -105,16 +124,18 @@ function save() {
       <div class="q-panel__header">
         <div>
           <h2 class="q-panel__title">主体材料清单</h2>
-          <p class="q-panel__desc">标注“如适用”的材料不作为所有活动的固定必填项。</p>
+          <p class="q-panel__desc">标注“如适用”的材料不作为所有活动的固定必填项</p>
         </div>
         <span class="q-muted">默认脱敏 · 操作留痕</span>
       </div>
       <div class="q-table-wrap">
-        <el-table :data="materials" style="min-width: 900px"
+        <el-table :data="materials" style="min-width: 1120px"
           ><el-table-column prop="name" label="材料名称" min-width="230"
             ><template #default="{ row }"
-              ><strong>{{ row.name }}</strong
-              ><span v-if="row.conditional" class="conditional">如适用</span></template
+              ><span class="material-name"
+                ><strong>{{ row.name }}</strong
+                ><span v-if="row.conditional" class="conditional">如适用</span></span
+              ></template
             ></el-table-column
           ><el-table-column prop="group" label="材料类型" width="130" /><el-table-column
             label="资料状态"
@@ -123,8 +144,9 @@ function save() {
           ><el-table-column prop="updatedAt" label="更新时间" width="150" /><el-table-column
             prop="note"
             label="说明"
-            min-width="220"
-          /><el-table-column label="操作" width="120" fixed="right"
+            min-width="300"
+            class-name="material-note"
+          /><el-table-column label="操作" width="136" fixed="right" class-name="material-action"
             ><template #default="{ row }"
               ><el-button link type="primary" @click="openFromTable(row)">{{
                 row.status === '待准备' ? '上传材料' : '查看或更新'
@@ -137,21 +159,32 @@ function save() {
     <section class="workflow-cards">
       <article>
         <h3>首次提交</h3>
-        <p>上传主体证明、授权材料和安全责任人信息后形成首个主体版本。</p>
+        <p><span>上传主体证明 授权材料和安全责任人信息</span><span>完成后形成首个主体版本</span></p>
       </article>
       <article>
         <h3>多人协作</h3>
-        <p>主体、场所、搭建与保安单位分别维护各自需要确认的材料。</p>
+        <p><span>主体 场所 搭建与保安单位</span><span>分别维护各自需要确认的材料</span></p>
       </article>
       <article>
         <h3>隐私保护</h3>
-        <p>身份证明和联系方式默认脱敏，查看与导出需要按权限留痕。</p>
+        <p><span>身份证明和联系方式默认脱敏</span><span>查看与导出需要按权限留痕</span></p>
       </article>
     </section>
-    <el-dialog v-model="dialog" :title="selected ? `更新：${selected.name}` : '上传主体材料'" width="600px"
+    <el-dialog
+      v-model="dialog"
+      :title="selected ? `查看或更新：${selected.name}` : '上传主体材料'"
+      width="760px"
       ><el-form label-position="top"
-        ><el-form-item label="材料类型"
-          ><el-select placeholder="请选择材料类型" :model-value="selected?.name"
+        ><section v-if="selected?.preview" class="material-preview">
+          <img :src="selected.preview" :alt="selected.previewAlt || `${selected.name}示意图`" />
+          <div class="material-preview__copy">
+            <span>脱敏示意图</span>
+            <strong>{{ selected.name }}</strong>
+            <p>{{ selected.guide }}</p>
+          </div>
+        </section>
+        <el-form-item label="材料类型"
+          ><el-select placeholder="请选择材料类型" :model-value="selected?.name" @change="selectMaterial"
             ><el-option
               v-for="item in materials"
               :key="item.id"
@@ -219,12 +252,72 @@ function save() {
 }
 .conditional {
   display: inline-block;
+  flex: 0 0 auto;
   margin-left: 7px;
   padding: 2px 5px;
   border-radius: 4px;
   background: #f2f4f7;
   color: #667085;
   font-size: 11px;
+  white-space: nowrap;
+}
+.material-name {
+  display: inline-flex;
+  align-items: center;
+  min-width: max-content;
+}
+:deep(.material-note .cell),
+:deep(.material-action .cell),
+:deep(.material-action .el-button) {
+  white-space: nowrap;
+}
+.q-description span,
+.workflow-cards p span {
+  display: block;
+}
+.material-preview {
+  display: grid;
+  grid-template-columns: minmax(260px, 1.1fr) minmax(220px, 0.9fr);
+  gap: 18px;
+  align-items: center;
+  margin-bottom: 20px;
+  padding: 14px;
+  border: 1px solid #e4e7ec;
+  border-radius: 8px;
+  background: #f8fafc;
+}
+.material-preview img {
+  display: block;
+  width: 100%;
+  aspect-ratio: 4 / 3;
+  object-fit: cover;
+  border: 1px solid #d0d5dd;
+  border-radius: 6px;
+  background: #fff;
+}
+.material-preview__copy {
+  display: grid;
+  gap: 8px;
+}
+.material-preview__copy span {
+  width: max-content;
+  padding: 3px 7px;
+  border-radius: 4px;
+  background: #eaf2ff;
+  color: #175cd3;
+  font-size: 12px;
+  font-weight: 700;
+}
+.material-preview__copy strong {
+  color: #172033;
+  font-size: 17px;
+  line-height: 1.5;
+}
+.material-preview__copy p {
+  margin: 0;
+  color: #475467;
+  font-size: 14px;
+  line-height: 1.7;
 }
 .workflow-cards {
   display: grid;
@@ -257,6 +350,9 @@ function save() {
   .profile-stats {
     flex-direction: column;
     gap: 5px;
+  }
+  .material-preview {
+    grid-template-columns: 1fr;
   }
 }
 </style>
