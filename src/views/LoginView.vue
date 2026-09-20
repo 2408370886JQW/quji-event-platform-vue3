@@ -119,7 +119,10 @@ async function submit() {
             native-type="submit"
             class="login-submit"
             >进入协同平台 →</el-button
-          ></el-form
+          >
+          <div class="register-entry">
+            <span>还没有主办方账号？</span><RouterLink to="/register">首次入驻注册</RouterLink>
+          </div></el-form
         >
       </section>
     </main>
@@ -302,6 +305,24 @@ async function submit() {
 }
 .login-submit {
   width: 100%;
+}
+.register-entry {
+  display: flex;
+  min-height: 40px;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  margin-top: 14px;
+  padding: 8px 12px;
+  border: 1px solid #b2ddff;
+  border-radius: 7px;
+  background: #f5faff;
+  color: #475467;
+  font-size: 14px;
+}
+.register-entry a {
+  color: #1d5fc6;
+  font-weight: 700;
 }
 @media (max-width: 960px) {
   .login-main {

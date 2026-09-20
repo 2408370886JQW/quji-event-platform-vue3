@@ -14,13 +14,32 @@ export const useSessionStore = defineStore('session', () => {
     loading.value = true
     try {
       const result = await platformApi.login(payload)
-      session.value = result
-      localStorage.setItem(SESSION_KEY, JSON.stringify(result))
-      localStorage.setItem('quji_token', result.token)
+      setSession(result)
       return result
     } finally {
       loading.value = false
     }
+  }
+
+  function setSession(nextSession: UserSession) {
+    session.value = nextSession
+    localStorage.setItem(SESSION_KEY, JSON.stringify(nextSession))
+    localStorage.setItem('quji_token', nextSession.token)
+  }
+
+  function createOrganizerSession(payload: { name: string; phone: string }) {
+    const result: UserSession = {
+      token: `local-organizer-${Date.now()}`,
+      user: {
+        id: `local-organizer-${payload.phone}`,
+        name: payload.name,
+        role: 'organizer',
+        roleName: '主办方入驻经办人',
+        organization: '待完成主体认证',
+      },
+    }
+    setSession(result)
+    return result
   }
 
   function logout() {
@@ -29,5 +48,5 @@ export const useSessionStore = defineStore('session', () => {
     localStorage.removeItem('quji_token')
   }
 
-  return { session, loading, isAuthenticated, login, logout }
+  return { session, loading, isAuthenticated, login, logout, setSession, createOrganizerSession }
 })

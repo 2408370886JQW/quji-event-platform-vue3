@@ -13,11 +13,14 @@ import {
   Fold,
   Expand,
   OfficeBuilding,
+  CirclePlus,
 } from '@element-plus/icons-vue'
 import { useSessionStore } from '@/stores/session'
+import { useOnboardingStore } from '@/stores/onboarding'
 
 const router = useRouter()
 const session = useSessionStore()
+const onboarding = useOnboardingStore()
 const collapsed = ref(false)
 
 const menu = computed(() => {
@@ -28,14 +31,28 @@ const menu = computed(() => {
     { path: '/costumes', label: '角色服装道具', icon: UserFilled },
     { path: '/onsite', label: '现场管理', icon: Warning },
   ]
-  const organizer = [{ path: '/organizer-profile', label: '主办方主体档案', icon: OfficeBuilding }]
-  return session.session?.user.role === 'organizer'
-    ? [...common, ...organizer]
-    : [
-        ...common,
-        { path: '/organizer-profile', label: '主体资料', icon: Document },
-        { path: '/workspace', label: '数据中心', icon: DataAnalysis },
-      ]
+  const role = session.session?.user.role
+  if (role === 'culture')
+    return [{ path: '/organizer-profile', label: '主办方主体档案', icon: OfficeBuilding }]
+  if (role === 'organizer') {
+    const organizer = [
+      { path: '/onboarding', label: '入驻与认证', icon: OfficeBuilding },
+      { path: '/organizer-profile', label: '主办方主体档案', icon: Document },
+    ]
+    const create = onboarding.canCreateActivity
+      ? [{ path: '/activities/new', label: '创建活动', icon: CirclePlus }]
+      : []
+    return [...create, ...common, ...organizer]
+  }
+  if (role === 'platform') {
+    return [
+      ...common,
+      { path: '/admissions', label: '入驻审核', icon: OfficeBuilding },
+      { path: '/organizer-profile', label: '主体资料', icon: Document },
+      { path: '/workspace', label: '数据中心', icon: DataAnalysis },
+    ]
+  }
+  return common
 })
 
 function logout() {

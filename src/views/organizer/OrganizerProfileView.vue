@@ -1,8 +1,9 @@
 <script setup lang="ts">
-import { ref } from 'vue'
+import { computed, ref } from 'vue'
 import { ElMessage } from 'element-plus'
 import { UploadFilled } from '@element-plus/icons-vue'
 import StatusTag from '@/components/StatusTag.vue'
+import { useSessionStore } from '@/stores/session'
 import type { MaterialItem } from '@/types/platform'
 
 type SubjectMaterial = MaterialItem & {
@@ -61,6 +62,8 @@ const materials = ref<SubjectMaterial[]>([
 ])
 const dialog = ref(false)
 const selected = ref<SubjectMaterial | null>(null)
+const session = useSessionStore()
+const isReadOnly = computed(() => session.session?.user.role === 'culture')
 function open(item?: SubjectMaterial) {
   selected.value = item || materials.value[0] || null
   dialog.value = true
@@ -93,7 +96,7 @@ function save() {
           <span>首次入驻与主体材料 安全责任人信息和相关资质都从这里开始管理</span>
         </p>
       </div>
-      <el-button type="primary" @click="open()">上传主体材料</el-button>
+      <el-button v-if="!isReadOnly" type="primary" @click="open()">上传主体材料</el-button>
     </div>
     <div class="guide">
       <strong>资料协同与办事导航</strong
@@ -149,7 +152,7 @@ function save() {
           /><el-table-column label="操作" width="136" fixed="right" class-name="material-action"
             ><template #default="{ row }"
               ><el-button link type="primary" @click="openFromTable(row)">{{
-                row.status === '待准备' ? '上传材料' : '查看或更新'
+                isReadOnly ? '查看材料' : row.status === '待准备' ? '上传材料' : '查看或更新'
               }}</el-button></template
             ></el-table-column
           ></el-table
@@ -172,35 +175,38 @@ function save() {
     </section>
     <el-dialog
       v-model="dialog"
-      :title="selected ? `查看或更新：${selected.name}` : '上传主体材料'"
+      :title="selected ? `${isReadOnly ? '查看材料' : '查看或更新'}：${selected.name}` : '上传主体材料'"
       width="760px"
       ><el-form label-position="top"
         ><section v-if="selected?.preview" class="material-preview">
-          <img :src="selected.preview" :alt="selected.previewAlt || `${selected.name}示意图`" />
+          <div class="material-preview__visual">
+            <img :src="selected.preview" :alt="selected.previewAlt || `${selected.name}公开样例`" />
+            <span>趣集公开样例 · 非真实证照</span>
+          </div>
           <div class="material-preview__copy">
-            <span>脱敏示意图</span>
+            <span>政府公开样例</span>
             <strong>{{ selected.name }}</strong>
             <p>{{ selected.guide }}</p>
           </div>
         </section>
-        <el-form-item label="材料类型"
+        <el-form-item v-if="!isReadOnly" label="材料类型"
           ><el-select placeholder="请选择材料类型" :model-value="selected?.name" @change="selectMaterial"
             ><el-option
               v-for="item in materials"
               :key="item.id"
               :label="item.name"
               :value="item.name" /></el-select></el-form-item
-        ><el-form-item label="上传文件"
+        ><el-form-item v-if="!isReadOnly" label="上传文件"
           ><el-upload drag :auto-upload="false"
             ><el-icon class="el-icon--upload"><UploadFilled /></el-icon>
             <div class="el-upload__text">拖放文件到此处，或 <em>点击选择文件</em></div></el-upload
           ></el-form-item
-        ><el-form-item label="补充说明"
+        ><el-form-item v-if="!isReadOnly" label="补充说明"
           ><el-input
             type="textarea"
             :rows="3"
             placeholder="填写材料版本、有效期或补充说明" /></el-form-item></el-form
-      ><template #footer
+      ><template v-if="!isReadOnly" #footer
         ><el-button @click="dialog = false">取消</el-button
         ><el-button type="primary" @click="save">保存材料记录</el-button></template
       ></el-dialog
@@ -290,10 +296,25 @@ function save() {
   display: block;
   width: 100%;
   aspect-ratio: 4 / 3;
-  object-fit: cover;
+  object-fit: contain;
   border: 1px solid #d0d5dd;
   border-radius: 6px;
   background: #fff;
+}
+.material-preview__visual {
+  position: relative;
+}
+.material-preview__visual > span {
+  position: absolute;
+  right: 0;
+  bottom: 0;
+  left: 0;
+  padding: 8px 12px;
+  background: rgb(15 23 42 / 74%);
+  color: #fff;
+  font-size: 12px;
+  font-weight: 700;
+  text-align: center;
 }
 .material-preview__copy {
   display: grid;

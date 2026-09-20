@@ -58,6 +58,80 @@ export interface MaterialItem {
   conditional?: boolean
 }
 
+/** 主办方首次入驻流程状态；由前端适配层持久化，后续可映射为服务端枚举。 */
+export type OnboardingStatus =
+  'not_started' | 'identity_completed' | 'materials_draft' | 'submitted' | 'changes_required' | 'approved'
+
+export type OnboardingMaterialKey =
+  'business_license' | 'agent_authorization' | 'safety_manager' | 'business_permit'
+
+export type OnboardingMaterialStatus =
+  'not_uploaded' | 'uploaded' | 'under_review' | 'changes_required' | 'approved'
+
+export interface RegistrationIdentity {
+  phone: string
+  name: string
+  idNumber: string
+  agentIdentity: 'legal_representative' | 'authorized_agent'
+  authorizationConfirmed: boolean
+}
+
+export interface OnboardingMaterial {
+  key: OnboardingMaterialKey
+  name: string
+  required: boolean
+  conditional?: boolean
+  status: OnboardingMaterialStatus
+  fileName?: string
+  fileType?: string
+  fileSize?: number
+  previewUrl?: string
+  isImage?: boolean
+  source?: 'upload' | 'sample'
+  reviewComment?: string
+  updatedAt?: string
+}
+
+export interface OnboardingState {
+  organizerId?: string
+  identity?: RegistrationIdentity
+  status: OnboardingStatus
+  materials: OnboardingMaterial[]
+  submittedAt?: string
+  reviewedAt?: string
+  reviewComment?: string
+}
+
+export interface OnboardingMaterialInput {
+  fileName: string
+  fileType?: string
+  fileSize?: number
+  previewUrl?: string
+  isImage?: boolean
+  source: 'upload' | 'sample'
+}
+
+export interface LocalActivityDraft {
+  id: string
+  status: 'draft' | 'published'
+  createdAt: string
+  basic: {
+    name: string
+    venue: string
+    schedule: string
+    contact: string
+  }
+  materials: {
+    description: string
+    safetyPlan: string
+  }
+  ticketing: {
+    ticketName: string
+    price: number
+    inventory: number
+  }
+}
+
 export interface TicketType {
   id: string
   name: string

@@ -95,7 +95,7 @@ function openActivity(id: string) {
             <div class="q-panel__header">
               <div>
                 <h2 class="q-panel__title">今日数据与异常提醒</h2>
-                <p class="q-panel__desc">关键数据来自已连接的数据源；联调阶段可使用 mock 数据。</p>
+                <p class="q-panel__desc">关键数据来自当前活动的售票 核验和现场记录</p>
               </div>
             </div>
             <div class="q-panel__body">
