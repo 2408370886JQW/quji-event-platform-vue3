@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { computed, ref } from 'vue'
 import { ElMessage } from 'element-plus'
-import { UploadFilled } from '@element-plus/icons-vue'
+import { Upload } from '@lucide/vue'
 import StatusTag from '@/components/StatusTag.vue'
 import { useSessionStore } from '@/stores/session'
 import type { MaterialItem } from '@/types/platform'
@@ -198,7 +198,7 @@ function save() {
               :value="item.name" /></el-select></el-form-item
         ><el-form-item v-if="!isReadOnly" label="上传文件"
           ><el-upload drag :auto-upload="false"
-            ><el-icon class="el-icon--upload"><UploadFilled /></el-icon>
+            ><Upload :size="28" />
             <div class="el-upload__text">拖放文件到此处，或 <em>点击选择文件</em></div></el-upload
           ></el-form-item
         ><el-form-item v-if="!isReadOnly" label="补充说明"
@@ -220,24 +220,24 @@ function save() {
   gap: 6px;
   margin-bottom: 20px;
   padding: 15px 17px;
-  border: 1px solid #b2ddff;
+  border: 1px solid var(--q-brand-line);
   border-radius: 7px;
-  background: #f0f9ff;
-  color: #175cd3;
+  background: var(--q-primary-soft);
+  color: var(--q-primary-strong);
   font-size: 14px;
   line-height: 1.65;
 }
 .guide span {
-  color: #475467;
+  color: var(--q-muted-strong);
 }
 .profile-stats {
   display: flex;
   gap: 16px;
-  color: #667085;
+  color: var(--q-muted);
   font-size: 13px;
 }
 .profile-stats b {
-  color: #1d5fc6;
+  color: var(--q-primary);
 }
 .company-grid {
   display: grid;
@@ -249,11 +249,11 @@ function save() {
   gap: 7px;
 }
 .company-grid span {
-  color: #667085;
+  color: var(--q-muted);
   font-size: 13px;
 }
 .company-grid strong {
-  color: #344054;
+  color: var(--q-text);
   font-size: 15px;
 }
 .conditional {
@@ -262,8 +262,8 @@ function save() {
   margin-left: 7px;
   padding: 2px 5px;
   border-radius: 4px;
-  background: #f2f4f7;
-  color: #667085;
+  background: var(--q-soft-strong);
+  color: var(--q-muted);
   font-size: 11px;
   white-space: nowrap;
 }
@@ -288,16 +288,16 @@ function save() {
   align-items: center;
   margin-bottom: 20px;
   padding: 14px;
-  border: 1px solid #e4e7ec;
+  border: 1px solid var(--q-line);
   border-radius: 8px;
-  background: #f8fafc;
+  background: var(--q-soft);
 }
 .material-preview img {
   display: block;
   width: 100%;
   aspect-ratio: 4 / 3;
   object-fit: contain;
-  border: 1px solid #d0d5dd;
+  border: 1px solid var(--q-line-strong);
   border-radius: 6px;
   background: #fff;
 }
@@ -324,19 +324,19 @@ function save() {
   width: max-content;
   padding: 3px 7px;
   border-radius: 4px;
-  background: #eaf2ff;
-  color: #175cd3;
+  background: var(--q-primary-soft);
+  color: var(--q-primary-strong);
   font-size: 12px;
   font-weight: 700;
 }
 .material-preview__copy strong {
-  color: #172033;
+  color: var(--q-ink);
   font-size: 17px;
   line-height: 1.5;
 }
 .material-preview__copy p {
   margin: 0;
-  color: #475467;
+  color: var(--q-muted-strong);
   font-size: 14px;
   line-height: 1.7;
 }
@@ -348,18 +348,18 @@ function save() {
 }
 .workflow-cards article {
   padding: 20px;
-  border: 1px solid #e4e7ec;
+  border: 1px solid var(--q-line);
   border-radius: 8px;
   background: #fff;
 }
 .workflow-cards h3 {
   margin: 0;
-  color: #172033;
+  color: var(--q-ink);
   font-size: 16px;
 }
 .workflow-cards p {
   margin: 8px 0 0;
-  color: #667085;
+  color: var(--q-muted);
   font-size: 14px;
   line-height: 1.65;
 }

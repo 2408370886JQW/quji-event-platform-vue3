@@ -48,6 +48,56 @@ export const createInitialOnboardingState = (): OnboardingState => ({
   materials: createDefaultMaterials(),
 })
 
+export const createApprovedOnboardingState = (): OnboardingState => ({
+  organizerId: 'org-xinghe-001',
+  identity: {
+    phone: '138****0628',
+    name: '林洁',
+    idNumber: '6501**********0628',
+    agentIdentity: 'authorized_agent',
+    authorizationConfirmed: true,
+  },
+  status: 'approved',
+  submittedAt: '2026-06-10T10:20:00.000Z',
+  reviewedAt: '2026-06-11T16:30:00.000Z',
+  materials: createDefaultMaterials().map((material) => {
+    const samples: Record<
+      OnboardingMaterialKey,
+      Pick<OnboardingMaterial, 'fileName' | 'previewUrl' | 'isImage'>
+    > = {
+      business_license: {
+        fileName: '营业执照或主体登记证明.webp',
+        previewUrl: '/materials/quji-public-license-sample.webp',
+        isImage: true,
+      },
+      agent_authorization: {
+        fileName: '法定代表人身份证明或经办授权材料.webp',
+        previewUrl: '/materials/quji-public-identity-sample.webp',
+        isImage: true,
+      },
+      safety_manager: {
+        fileName: '主体安全责任人信息表.pdf',
+        previewUrl: '/materials/quji-public-identity-sample.webp',
+        isImage: true,
+      },
+      business_permit: {
+        fileName: '经营性业务相关许可.webp',
+        previewUrl: '/materials/quji-public-permit-sample.webp',
+        isImage: true,
+      },
+    }
+    return {
+      ...material,
+      ...samples[material.key],
+      fileType: material.key === 'safety_manager' ? 'application/pdf' : 'image/webp',
+      fileSize: 78590,
+      source: 'sample' as const,
+      status: 'approved' as const,
+      updatedAt: '2026-06-11 16:30',
+    }
+  }),
+})
+
 function readState(): OnboardingState {
   const raw = localStorage.getItem(ONBOARDING_STORAGE_KEY)
   if (!raw) return createInitialOnboardingState()
@@ -164,6 +214,12 @@ export const useOnboardingStore = defineStore('onboarding', () => {
     persist()
   }
 
+  function ensureReturningOrganizerApproved() {
+    if (state.value.status !== 'not_started') return
+    state.value = createApprovedOnboardingState()
+    persist()
+  }
+
   return {
     state,
     requiredMaterialsComplete,
@@ -175,5 +231,6 @@ export const useOnboardingStore = defineStore('onboarding', () => {
     requestChanges,
     approve,
     reset,
+    ensureReturningOrganizerApproved,
   }
 })

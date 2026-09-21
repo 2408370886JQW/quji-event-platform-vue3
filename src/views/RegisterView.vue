@@ -2,7 +2,7 @@
 import { computed, reactive, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { ElMessage, type FormInstance, type FormRules } from 'element-plus'
-import { ArrowLeft, CircleCheck } from '@element-plus/icons-vue'
+import { ArrowLeft, CircleCheck, Sparkles } from '@lucide/vue'
 import { useOnboardingStore } from '@/stores/onboarding'
 import { useSessionStore } from '@/stores/session'
 
@@ -79,12 +79,10 @@ async function completeRegistration() {
   <div class="register-page">
     <header class="register-header">
       <RouterLink class="register-brand" to="/login">
-        <span class="register-brand__mark">趣</span
+        <span class="register-brand__mark"><Sparkles :size="19" /></span
         ><span><b>趣集</b><small>文化活动协同管理平台</small></span>
       </RouterLink>
-      <RouterLink class="back-login" to="/login"
-        ><el-icon><ArrowLeft /></el-icon>返回已有账号登录</RouterLink
-      >
+      <RouterLink class="back-login" to="/login"><ArrowLeft :size="16" />返回已有账号登录</RouterLink>
     </header>
     <main class="register-main">
       <section class="register-context">
@@ -92,7 +90,7 @@ async function completeRegistration() {
         <h1>从账号到主体认证<br />建立可信协作起点</h1>
         <p>先完成手机号与实名信息登记 再上传主体材料并等待平台审核</p>
         <div class="context-note">
-          <el-icon><CircleCheck /></el-icon>
+          <CircleCheck :size="18" />
           <span>完成注册后，您将以主办方经办人身份进入入驻与认证流程。</span>
         </div>
       </section>
@@ -179,17 +177,20 @@ async function completeRegistration() {
 <style scoped lang="scss">
 .register-page {
   min-height: 100vh;
-  color: #172033;
-  background: linear-gradient(130deg, #eef5fa 0%, #f9f5eb 54%, #eff7f4 100%);
+  color: var(--q-ink);
+  background:
+    linear-gradient(90deg, rgb(255 255 255 / 0.82), rgb(255 255 255 / 0.52)),
+    url('/images/quji-xinjiang-login-background.webp') center / cover fixed;
 }
 .register-header {
   display: flex;
-  height: 70px;
+  height: 72px;
   align-items: center;
   justify-content: space-between;
   padding: 0 clamp(20px, 4vw, 60px);
   border-bottom: 1px solid rgb(255 255 255 / 62%);
   background: rgb(255 255 255 / 70%);
+  backdrop-filter: blur(18px) saturate(1.15);
 }
 .register-brand {
   display: flex;
@@ -197,12 +198,14 @@ async function completeRegistration() {
   gap: 10px;
 }
 .register-brand__mark {
+  position: relative;
   display: grid;
   width: 34px;
   height: 34px;
   place-items: center;
   border-radius: 8px;
-  background: #1d5fc6;
+  background: var(--q-primary);
+  box-shadow: none;
   color: #fff;
   font-weight: 800;
 }
@@ -213,7 +216,7 @@ async function completeRegistration() {
 .register-brand small {
   display: block;
   margin-top: 1px;
-  color: #667085;
+  color: var(--q-muted);
   font-size: 11px;
 }
 .back-login {
@@ -221,13 +224,13 @@ async function completeRegistration() {
   min-height: 40px;
   align-items: center;
   gap: 6px;
-  color: #475467;
+  color: var(--q-muted-strong);
   font-size: 14px;
   font-weight: 650;
 }
 .register-main {
   display: grid;
-  min-height: calc(100vh - 70px);
+  min-height: calc(100vh - 72px);
   grid-template-columns: minmax(0, 0.92fr) minmax(480px, 0.82fr);
   align-items: center;
   gap: clamp(40px, 8vw, 130px);
@@ -241,20 +244,22 @@ async function completeRegistration() {
 .intro-tag {
   display: inline-flex;
   padding: 6px 10px;
-  border-radius: 5px;
-  background: #eaf2ff;
-  color: #1d5fc6;
+  border: 1px solid var(--q-brand-line);
+  border-radius: 999px;
+  background: rgb(255 255 255 / 0.72);
+  color: var(--q-primary-strong);
   font-size: 13px;
   font-weight: 700;
 }
 .register-context h1 {
   margin: 22px 0 14px;
+  color: var(--q-brand-navy);
   font-size: clamp(36px, 4.1vw, 56px);
   line-height: 1.18;
   letter-spacing: -0.06em;
 }
 .register-context p {
-  color: #475467;
+  color: var(--q-muted-strong);
   font-size: 16px;
   line-height: 1.85;
 }
@@ -264,14 +269,14 @@ async function completeRegistration() {
   align-items: flex-start;
   margin-top: 26px;
   padding: 14px 16px;
-  border: 1px solid rgb(255 255 255 / 80%);
-  border-radius: 8px;
-  background: rgb(255 255 255 / 70%);
-  color: #475467;
+  border: 1px solid var(--q-brand-line);
+  border-radius: 14px;
+  background: rgb(255 255 255 / 76%);
+  color: var(--q-muted-strong);
   font-size: 14px;
   line-height: 1.65;
 }
-.context-note .el-icon {
+.context-note > svg {
   flex: none;
   margin-top: 2px;
   color: #067647;
@@ -282,10 +287,11 @@ async function completeRegistration() {
   border: 1px solid rgb(255 255 255 / 86%);
   border-radius: 12px;
   background: rgb(255 255 255 / 90%);
-  box-shadow: 0 16px 50px rgb(40 73 98 / 13%);
+  box-shadow: var(--q-shadow-raised);
+  backdrop-filter: blur(20px);
 }
 .register-card__heading > span {
-  color: #667085;
+  color: var(--q-primary);
   font-size: 13px;
   font-weight: 700;
 }
@@ -296,7 +302,7 @@ async function completeRegistration() {
 }
 .register-card__heading p {
   margin: 0;
-  color: #667085;
+  color: var(--q-muted);
   font-size: 14px;
 }
 .register-steps {
@@ -310,12 +316,12 @@ async function completeRegistration() {
 }
 .demo-hint {
   margin: -4px 0 16px;
-  color: #667085;
+  color: var(--q-muted);
   font-size: 14px;
   line-height: 1.6;
 }
 .demo-hint strong {
-  color: #1d5fc6;
+  color: var(--q-primary-strong);
 }
 .register-submit {
   width: 100%;
@@ -329,7 +335,7 @@ async function completeRegistration() {
 }
 .confirmation {
   align-items: flex-start;
-  color: #475467;
+  color: var(--q-muted-strong);
   font-size: 14px;
   line-height: 1.65;
 }

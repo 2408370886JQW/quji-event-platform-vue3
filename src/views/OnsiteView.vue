@@ -20,9 +20,7 @@ function scan() {
       <div>
         <div class="q-eyebrow">现场管理</div>
         <h1 class="q-title">现场核验工作台</h1>
-        <p class="q-description">
-          适用于现场大屏或平板操作，聚合已售票、实名、入场、场内人数、进场速度与异常核验数据。
-        </p>
+        <p class="q-description">聚合已售票 实名 入场 场内人数 进场速度与异常核验数据</p>
       </div>
       <el-button type="primary" :loading="activeScan" @click="scan">扫码核验</el-button>
     </div>
@@ -89,18 +87,18 @@ function scan() {
   gap: 7px;
   min-width: 0;
   padding: 16px;
-  border: 1px solid #e4e7ec;
+  border: 1px solid var(--q-line);
   border-radius: 8px;
   background: #fff;
 }
 .onsite-metrics span,
 .onsite-metrics small {
-  color: #667085;
+  color: var(--q-muted);
   font-size: 12px;
 }
 .onsite-metrics strong {
-  color: #172033;
-  font-size: 23px;
+  color: var(--q-brand-navy);
+  font-size: 25px;
   letter-spacing: -0.03em;
 }
 .onsite-metrics i {
@@ -120,17 +118,17 @@ function scan() {
   width: 230px;
   height: 230px;
   place-items: center;
-  border: 1px solid #e4e7ec;
-  border-radius: 12px;
-  background: linear-gradient(135deg, #f6faff, #fff);
-  color: #667085;
+  border: 1px solid var(--q-line);
+  border-radius: 8px;
+  background: var(--q-primary-soft);
+  color: var(--q-muted);
   text-align: center;
 }
 .scanner__frame span {
   position: absolute;
   width: 28px;
   height: 28px;
-  border-color: #1d5fc6;
+  border-color: var(--q-primary);
   border-style: solid;
 }
 .scanner__frame span:nth-child(1) {
@@ -163,7 +161,7 @@ function scan() {
 }
 .alerts article {
   padding: 18px;
-  border-bottom: 1px solid #eaecf0;
+  border-bottom: 1px solid var(--q-line-soft);
 }
 .alerts b {
   color: #7a271a;

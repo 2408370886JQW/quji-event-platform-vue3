@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { computed, ref } from 'vue'
 import { ElMessage } from 'element-plus'
-import { Document, Picture, View } from '@element-plus/icons-vue'
+import { Eye, FileText, Image } from '@lucide/vue'
 import { useOnboardingStore } from '@/stores/onboarding'
 import type { OnboardingMaterial, OnboardingStatus } from '@/types/platform'
 
@@ -130,7 +130,7 @@ function requestChanges() {
           <el-table-column label="文件" min-width="260"
             ><template #default="{ row }"
               ><span v-if="row.fileName" class="file-name"
-                ><el-icon><Picture v-if="row.isImage" /><Document v-else /></el-icon>{{ row.fileName }}</span
+                ><Image v-if="row.isImage" :size="16" /><FileText v-else :size="16" />{{ row.fileName }}</span
               ><span v-else class="q-muted">未上传</span></template
             ></el-table-column
           >
@@ -154,7 +154,7 @@ function requestChanges() {
                 type="primary"
                 class="view-file"
                 @click="viewMaterial(row)"
-                ><el-icon><View /></el-icon>查看文件</el-button
+                ><Eye :size="16" />查看文件</el-button
               ></template
             ></el-table-column
           >
@@ -202,7 +202,7 @@ function requestChanges() {
           <span v-if="selectedMaterial.source === 'sample'">趣集公开样例 · 非真实证照</span>
         </div>
         <div v-else class="file-detail">
-          <el-icon><Document /></el-icon><strong>{{ selectedMaterial.fileName }}</strong
+          <FileText :size="28" /><strong>{{ selectedMaterial.fileName }}</strong
           ><span>{{ selectedMaterial.fileType || '文件类型未记录' }}</span>
         </div>
         <div class="file-meta">
@@ -227,15 +227,15 @@ function requestChanges() {
   align-items: center;
   padding: 5px 11px;
   border-radius: 999px;
-  background: #f2f4f7;
-  color: #475467;
+  background: var(--q-soft-strong);
+  color: var(--q-muted-strong);
   font-size: 14px;
   font-weight: 700;
   white-space: nowrap;
 }
 .review-status--submitted {
-  background: #eff8ff;
-  color: #175cd3;
+  background: var(--q-primary-soft);
+  color: var(--q-primary-strong);
 }
 .review-status--changes_required {
   background: #fef3f2;
@@ -259,11 +259,11 @@ function requestChanges() {
   gap: 7px;
 }
 .applicant-grid span {
-  color: #667085;
+  color: var(--q-muted);
   font-size: 14px;
 }
 .applicant-grid strong {
-  color: #344054;
+  color: var(--q-text);
   font-size: 15px;
 }
 .material-title {
@@ -272,14 +272,14 @@ function requestChanges() {
   gap: 7px;
 }
 .material-title strong {
-  color: #344054;
+  color: var(--q-text);
   font-size: 14px;
 }
 .conditional {
-  padding: 2px 6px;
-  border-radius: 4px;
-  background: #f2f4f7;
-  color: #667085;
+  padding: 2px 7px;
+  border-radius: 999px;
+  background: var(--q-primary-soft);
+  color: var(--q-primary-strong);
   font-size: 12px;
   white-space: nowrap;
 }
@@ -287,25 +287,25 @@ function requestChanges() {
   display: inline-flex;
   align-items: center;
   gap: 7px;
-  color: #475467;
+  color: var(--q-muted-strong);
   font-size: 14px;
 }
-.file-name .el-icon {
-  color: #1d5fc6;
+.file-name > svg {
+  color: var(--q-primary);
 }
 .material-state {
   display: inline-flex;
-  padding: 3px 7px;
-  border-radius: 4px;
-  background: #f2f4f7;
-  color: #667085;
+  padding: 3px 8px;
+  border-radius: 999px;
+  background: var(--q-soft-strong);
+  color: var(--q-muted);
   font-size: 12px;
   font-weight: 700;
   white-space: nowrap;
 }
 .material-state--under_review {
-  background: #eff8ff;
-  color: #175cd3;
+  background: var(--q-primary-soft);
+  color: var(--q-primary-strong);
 }
 .material-state--approved {
   background: #ecfdf3;
@@ -324,9 +324,9 @@ function requestChanges() {
   gap: 5px;
   margin-bottom: 20px;
   padding: 15px 17px;
-  border: 1px solid #fecdca;
-  border-radius: 8px;
-  background: #fef3f2;
+  border: 1px solid #f6cedf;
+  border-radius: 12px;
+  background: #fff3f7;
   color: #b42318;
   font-size: 14px;
   line-height: 1.65;
@@ -337,20 +337,20 @@ function requestChanges() {
   justify-content: space-between;
   gap: 20px;
   padding: 18px 20px;
-  border: 1px solid #b2ddff;
+  border: 1px solid var(--q-brand-line);
   border-radius: 8px;
-  background: #f5faff;
+  background: var(--q-primary-soft);
 }
 .review-actions > div:first-child {
   display: grid;
   gap: 5px;
 }
 .review-actions strong {
-  color: #172033;
+  color: var(--q-ink);
   font-size: 16px;
 }
 .review-actions span {
-  color: #475467;
+  color: var(--q-muted-strong);
   font-size: 14px;
   line-height: 1.6;
 }
@@ -361,7 +361,7 @@ function requestChanges() {
 }
 .dialog-copy {
   margin: 0 0 14px;
-  color: #475467;
+  color: var(--q-muted-strong);
   font-size: 14px;
   line-height: 1.65;
 }
@@ -389,22 +389,22 @@ function requestChanges() {
   width: 100%;
   max-height: 360px;
   object-fit: contain;
-  border: 1px solid #e4e7ec;
-  border-radius: 8px;
-  background: #f8fafc;
+  border: 1px solid var(--q-line);
+  border-radius: 14px;
+  background: var(--q-soft);
 }
 .file-detail {
   display: grid;
   min-height: 170px;
   place-items: center;
   gap: 8px;
-  border: 1px dashed #d0d5dd;
+  border: 1px dashed var(--q-line-strong);
   border-radius: 8px;
-  color: #475467;
+  color: var(--q-muted-strong);
   font-size: 14px;
 }
-.file-detail .el-icon {
-  color: #1d5fc6;
+.file-detail > svg {
+  color: var(--q-primary);
   font-size: 36px;
 }
 .file-meta {
@@ -414,11 +414,11 @@ function requestChanges() {
   font-size: 14px;
 }
 .file-meta span {
-  color: #667085;
+  color: var(--q-muted);
 }
 .file-meta strong {
   overflow: hidden;
-  color: #344054;
+  color: var(--q-text);
   text-overflow: ellipsis;
   white-space: nowrap;
 }

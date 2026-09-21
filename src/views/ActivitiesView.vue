@@ -31,7 +31,7 @@ onMounted(async () => {
         <h1 class="q-title">活动列表</h1>
         <p class="q-description">以活动为核心对象，一场活动对应一套完整数字档案和全过程操作记录。</p>
       </div>
-      <el-button type="primary">创建活动</el-button>
+      <el-button type="primary" @click="router.push('/activities/new')">创建活动</el-button>
     </div>
     <section class="q-panel">
       <div class="q-panel__header">
@@ -77,15 +77,15 @@ onMounted(async () => {
   gap: 4px;
 }
 .cell-main strong {
-  color: #172033;
+  color: var(--q-ink);
   font-size: 14px;
 }
 .cell-main span {
-  color: #475467;
+  color: var(--q-muted-strong);
   font-size: 13px;
 }
 .cell-main small {
-  color: #98a2b3;
+  color: var(--q-muted-light);
   font-size: 12px;
 }
 </style>

@@ -49,7 +49,7 @@ const active = computed(() =>
   display: grid;
   gap: 8px;
   justify-items: center;
-  color: #98a2b3;
+  color: var(--q-muted-light);
   font-size: 13px;
   font-weight: 650;
   text-align: center;
@@ -60,7 +60,7 @@ const active = computed(() =>
   left: calc(50% + 17px);
   width: calc(100% - 34px);
   height: 2px;
-  background: #eaecf0;
+  background: var(--q-line);
   content: '';
 }
 .lifecycle__dot {
@@ -70,27 +70,29 @@ const active = computed(() =>
   width: 32px;
   height: 32px;
   place-items: center;
-  border: 2px solid #d0d5dd;
+  border: 2px solid var(--q-line-strong);
   border-radius: 50%;
   background: #fff;
+  box-shadow: 0 0 0 4px #fff;
   font-size: 13px;
 }
 .is-done,
 .is-active {
-  color: #1d5fc6;
+  color: var(--q-primary);
 }
 .is-done .lifecycle__dot {
-  border-color: #079455;
-  background: #079455;
+  border-color: var(--q-primary-strong);
+  background: var(--q-primary-strong);
   color: #fff;
 }
 .is-active .lifecycle__dot {
-  border-color: #1d5fc6;
-  background: #1d5fc6;
+  border-color: var(--q-primary);
+  background: var(--q-primary);
   color: #fff;
+  box-shadow: 0 0 0 4px var(--q-primary-soft);
 }
 .is-done:not(:last-child)::after {
-  background: #079455;
+  background: var(--q-primary-strong);
 }
 @media (max-width: 760px) {
   .lifecycle {

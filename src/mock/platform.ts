@@ -168,9 +168,9 @@ export const activityDetail: ActivityDetail = {
     },
   ],
   ticketTypes: [
-    { id: 'ticket-1', name: '普通单日票', price: 79, inventory: 4000, sold: 3116, status: '销售中' },
-    { id: 'ticket-2', name: 'Coser 票', price: 49, inventory: 600, sold: 498, status: '销售中' },
-    { id: 'ticket-3', name: '学生票', price: 59, inventory: 800, sold: 634, status: '销售中' },
-    { id: 'ticket-4', name: '现场当日票', price: 99, inventory: 1000, sold: 414, status: '未开售' },
+    { id: 'ticket-1', name: '普通观众票', price: 88, inventory: 6000, sold: 3548, status: '销售中' },
+    { id: 'ticket-2', name: 'Coser 专属票', price: 68, inventory: 500, sold: 326, status: '销售中' },
+    { id: 'ticket-3', name: '学生早鸟票', price: 58, inventory: 800, sold: 788, status: '停售' },
+    { id: 'ticket-4', name: '现场当日票', price: 98, inventory: 1000, sold: 0, status: '未开售' },
   ],
 }

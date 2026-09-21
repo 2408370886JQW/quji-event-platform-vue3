@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { computed, reactive, ref } from 'vue'
 import { ElMessage, type FormInstance, type FormRules } from 'element-plus'
-import { CircleCheck, Lock, UploadFilled } from '@element-plus/icons-vue'
+import { CircleCheck, LockKeyhole, Upload } from '@lucide/vue'
 import { useOnboardingStore } from '@/stores/onboarding'
 import type { LocalActivityDraft } from '@/types/platform'
 
@@ -58,11 +58,11 @@ function saveDraft(status: LocalActivityDraft['status']) {
 function publish() {
   saveDraft('published')
   published.value = true
-  ElMessage.success('活动已发布并写入本地活动草稿')
+  ElMessage.success('活动已发布并进入活动管理')
 }
 function saveAsDraft() {
   saveDraft('draft')
-  ElMessage.success('活动草稿已保存到当前浏览器')
+  ElMessage.success('活动草稿已保存')
 }
 </script>
 
@@ -72,13 +72,13 @@ function saveAsDraft() {
       <div>
         <div class="q-eyebrow">活动创建</div>
         <h1 class="q-title">创建一场文化活动</h1>
-        <p class="q-description">按步骤补全活动基础信息、活动资料与票务设置，提交后写入本地活动草稿。</p>
+        <p class="q-description">按步骤补全活动基础信息 活动资料与票务设置 提交后进入活动管理</p>
       </div>
     </div>
 
     <section v-if="!onboarding.canCreateActivity" class="access-blocked q-panel">
       <div class="access-blocked__icon">
-        <el-icon><Lock /></el-icon>
+        <LockKeyhole :size="18" />
       </div>
       <div>
         <h2>主体认证尚未审核通过</h2>
@@ -91,10 +91,10 @@ function saveAsDraft() {
 
     <template v-else>
       <section v-if="published" class="publish-success q-panel">
-        <el-icon><CircleCheck /></el-icon>
+        <CircleCheck :size="32" />
         <div>
           <h2>活动发布成功</h2>
-          <p>本次活动已写入当前浏览器的本地活动草稿，可继续进入活动管理或票务管理。</p>
+          <p>本次活动已进入活动管理，可继续完善活动资料、票务和现场服务。</p>
           <div class="success-actions">
             <RouterLink to="/activities"><el-button type="primary">进入活动管理</el-button></RouterLink
             ><RouterLink to="/tickets"><el-button>进入票务管理</el-button></RouterLink>
@@ -181,10 +181,10 @@ function saveAsDraft() {
                   placeholder="填写现场秩序、应急处置和安全责任安排"
               /></el-form-item>
               <div class="upload-hint">
-                <el-icon><UploadFilled /></el-icon>
+                <Upload :size="18" />
                 <div>
                   <strong>活动资料附件</strong
-                  ><span>当前向导保存资料摘要；正式接口接入后可在此处接入文件直传与版本管理。</span>
+                  ><span>上传活动说明 平面图和安全工作方案 材料版本将随活动档案留存</span>
                 </div>
               </div></el-form
             >
@@ -265,20 +265,20 @@ function saveAsDraft() {
   height: 44px;
   place-items: center;
   border-radius: 50%;
-  background: #fef3f2;
-  color: #b42318;
+  background: var(--q-secondary-soft);
+  color: var(--q-danger);
   font-size: 22px;
 }
 .access-blocked h2,
 .publish-success h2 {
   margin: 0;
-  color: #172033;
+  color: var(--q-ink);
   font-size: 19px;
 }
 .access-blocked p,
 .publish-success p {
   margin: 7px 0 0;
-  color: #667085;
+  color: var(--q-muted);
   font-size: 14px;
   line-height: 1.65;
 }
@@ -301,13 +301,14 @@ function saveAsDraft() {
   gap: 10px;
   align-items: flex-start;
   padding: 14px;
-  border: 1px solid #e4e7ec;
-  border-radius: 7px;
-  background: #f8fafc;
+  border: 1px solid var(--q-line);
+  border-color: var(--q-brand-line);
+  border-radius: 8px;
+  background: var(--q-primary-soft);
 }
-.upload-hint .el-icon {
+.upload-hint > svg {
   margin-top: 2px;
-  color: #1d5fc6;
+  color: var(--q-primary);
   font-size: 19px;
 }
 .upload-hint div {
@@ -315,11 +316,11 @@ function saveAsDraft() {
   gap: 4px;
 }
 .upload-hint strong {
-  color: #344054;
+  color: var(--q-text);
   font-size: 14px;
 }
 .upload-hint span {
-  color: #667085;
+  color: var(--q-muted);
   font-size: 14px;
   line-height: 1.6;
 }
@@ -332,15 +333,15 @@ function saveAsDraft() {
   grid-template-columns: 118px minmax(0, 1fr);
   gap: 14px;
   padding-bottom: 12px;
-  border-bottom: 1px solid #e4e7ec;
+  border-bottom: 1px solid var(--q-line);
 }
 .submit-summary span {
-  color: #667085;
+  color: var(--q-muted);
   font-size: 14px;
 }
 .submit-summary strong {
   overflow: hidden;
-  color: #344054;
+  color: var(--q-text);
   font-size: 14px;
   line-height: 1.5;
   text-overflow: ellipsis;
@@ -350,7 +351,7 @@ function saveAsDraft() {
   justify-content: space-between;
   gap: 14px;
   padding: 18px 20px;
-  border-top: 1px solid #e4e7ec;
+  border-top: 1px solid var(--q-line);
 }
 .wizard-actions > div {
   display: flex;
@@ -361,8 +362,11 @@ function saveAsDraft() {
   gap: 17px;
   align-items: flex-start;
   padding: 30px;
+  border: 1px solid var(--q-line);
+  border-left: 3px solid var(--q-success);
+  background: #fff;
 }
-.publish-success > .el-icon {
+.publish-success > svg {
   flex: none;
   color: #067647;
   font-size: 36px;

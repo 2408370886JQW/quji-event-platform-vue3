@@ -26,13 +26,13 @@ const router = createRouter({
           path: 'workspace',
           name: 'workspace',
           component: () => import('@/views/WorkspaceView.vue'),
-          meta: { roles: ['platform', 'organizer', 'onsite'] },
+          meta: { roles: ['platform', 'organizer', 'culture', 'onsite'] },
         },
         {
           path: 'activities',
           name: 'activities',
           component: () => import('@/views/ActivitiesView.vue'),
-          meta: { roles: ['platform', 'organizer', 'onsite'] },
+          meta: { roles: ['platform', 'organizer', 'culture'] },
         },
         {
           path: 'activities/:id',
@@ -69,7 +69,7 @@ const router = createRouter({
           path: 'tickets',
           name: 'tickets',
           component: () => import('@/views/TicketsView.vue'),
-          meta: { roles: ['platform', 'organizer', 'onsite'] },
+          meta: { roles: ['platform', 'organizer'] },
         },
         {
           path: 'costumes',
@@ -82,6 +82,18 @@ const router = createRouter({
           name: 'onsite',
           component: () => import('@/views/OnsiteView.vue'),
           meta: { roles: ['platform', 'organizer', 'onsite'] },
+        },
+        {
+          path: 'archive',
+          name: 'archive',
+          component: () => import('@/views/ArchiveView.vue'),
+          meta: { roles: ['platform', 'organizer', 'culture'] },
+        },
+        {
+          path: 'data-center',
+          name: 'data-center',
+          component: () => import('@/views/DataCenterView.vue'),
+          meta: { roles: ['platform', 'organizer', 'culture'] },
         },
         { path: '/:pathMatch(.*)*', redirect: '/workspace' },
       ],

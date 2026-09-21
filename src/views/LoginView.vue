@@ -2,39 +2,46 @@
 import { reactive, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { ElMessage, type FormInstance, type FormRules } from 'element-plus'
-import { DataAnalysis, Document, Grid, OfficeBuilding } from '@element-plus/icons-vue'
+import { ArrowRight, Building2, Landmark, Settings2, ShieldCheck, Sparkles, UserPlus } from '@lucide/vue'
 import { useSessionStore } from '@/stores/session'
+import { useOnboardingStore } from '@/stores/onboarding'
 import type { UserRole } from '@/types/platform'
 
 const router = useRouter()
 const route = useRoute()
 const session = useSessionStore()
+const onboarding = useOnboardingStore()
 const formRef = ref<FormInstance>()
+const locale = ref<'zh' | 'en' | 'ug'>('zh')
 const form = reactive({ account: 'linjie@quji.cn', password: '123456', role: 'organizer' as UserRole })
-const roles: Array<{ key: UserRole; title: string; description: string; icon: typeof Grid }> = [
+const roles = [
   {
-    key: 'platform',
+    key: 'platform' as UserRole,
     title: '平台运营人员',
-    description: '配置活动流程 账号权限 服务运营',
-    icon: Grid,
+    lines: ['配置活动流程', '账号权限 服务运营'],
+    icon: Settings2,
+    color: '#2563eb',
   },
   {
-    key: 'organizer',
+    key: 'organizer' as UserRole,
     title: '主办方活动运营人员',
-    description: '维护活动资料 票务 现场与参与人员',
-    icon: OfficeBuilding,
+    lines: ['维护活动资料 票务', '现场与参与人员'],
+    icon: Building2,
+    color: '#7c3aed',
   },
   {
-    key: 'culture',
+    key: 'culture' as UserRole,
     title: '文旅业务指导人员',
-    description: '查看活动电子档案 服务进度与汇总数据',
-    icon: Document,
+    lines: ['查看活动电子档案', '服务进度与汇总数据'],
+    icon: Landmark,
+    color: '#b45309',
   },
   {
-    key: 'onsite',
+    key: 'onsite' as UserRole,
     title: '现场协同人员',
-    description: '处理现场核验 异常记录与处置反馈',
-    icon: DataAnalysis,
+    lines: ['处理现场核验', '异常记录与处置反馈'],
+    icon: ShieldCheck,
+    color: '#0f766e',
   },
 ]
 const rules: FormRules = {
@@ -47,6 +54,7 @@ async function submit() {
   if (!valid) return
   try {
     await session.login(form)
+    if (form.role === 'organizer') onboarding.ensureReturningOrganizerApproved()
     ElMessage.success('登录成功')
     router.replace(String(route.query.redirect || '/workspace'))
   } catch (error) {
@@ -57,23 +65,34 @@ async function submit() {
 
 <template>
   <div class="login-page">
+    <div class="login-background" aria-hidden="true"></div>
+    <div class="login-overlay" aria-hidden="true"></div>
     <header class="login-header">
       <div class="login-brand">
-        <span class="login-brand__mark">趣</span><span><b>趣集</b><small>文化活动协同管理平台</small></span>
+        <span class="login-brand__mark"><Sparkles :size="20" /></span>
+        <span><b>趣集</b><small>文化活动协同管理平台</small></span>
       </div>
-      <div class="language">中文 EN ئۇيغۇرچە</div>
+      <div class="language" aria-label="语言选择">
+        <button :class="{ active: locale === 'zh' }" @click="locale = 'zh'">中文</button>
+        <button :class="{ active: locale === 'en' }" @click="locale = 'en'">EN</button>
+        <button :class="{ active: locale === 'ug' }" @click="locale = 'ug'">ئۇيغۇرچە</button>
+      </div>
     </header>
     <main class="login-main">
       <section class="login-intro">
         <span class="intro-tag">新疆 · 多元文化活动协同</span>
         <h1>一场活动<br />一套完整数字档案</h1>
-        <p>以活动为核心对象，连接主办方资料、参与人员、票务、角色服装道具、现场核验与活动归档。</p>
+        <p>
+          <span>以活动为核心对象 连接主办方资料 参与人员</span
+          ><span>票务 角色服装道具 现场核验与活动归档</span>
+        </p>
         <div class="intro-stats">
           <div><strong>01</strong><span>统一工作台</span></div>
           <div><strong>09</strong><span>活动档案模块</span></div>
           <div><strong>全程</strong><span>操作留痕</span></div>
         </div>
       </section>
+
       <section class="login-card">
         <div class="login-card__heading">
           <span>角色登录</span>
@@ -82,15 +101,22 @@ async function submit() {
         </div>
         <div class="role-grid">
           <button
-            v-for="role in roles"
-            :key="role.key"
+            v-for="item in roles"
+            :key="item.key"
             type="button"
             class="role-card"
-            :class="{ 'role-card--active': form.role === role.key }"
-            @click="form.role = role.key"
+            :class="{ 'role-card--active': form.role === item.key }"
+            :aria-pressed="form.role === item.key"
+            @click="form.role = item.key"
           >
-            <component :is="role.icon" :size="21" /><strong>{{ role.title }}</strong
-            ><span>{{ role.description }}</span>
+            <span class="role-card__icon" :style="{ backgroundColor: item.color }"
+              ><component :is="item.icon" :size="20"
+            /></span>
+            <strong>{{ item.title }}</strong>
+            <small
+              ><span>{{ item.lines[0] }}</span
+              ><span>{{ item.lines[1] }}</span></small
+            >
           </button>
         </div>
         <el-form
@@ -100,30 +126,41 @@ async function submit() {
           label-position="top"
           class="login-form"
           @submit.prevent="submit"
-          ><el-form-item label="账号" prop="account"
-            ><el-input v-model="form.account" size="large" autocomplete="username" /></el-form-item
-          ><el-form-item label="密码" prop="password"
-            ><el-input
-              v-model="form.password"
-              size="large"
-              type="password"
-              show-password
-              autocomplete="current-password"
-              @keyup.enter="submit"
-          /></el-form-item>
-          <p class="demo-hint">预置账号 linjie@quji.cn 预置密码 123456</p>
+        >
+          <div class="login-fields">
+            <el-form-item label="账号" prop="account"
+              ><el-input v-model="form.account" size="large" autocomplete="username"
+            /></el-form-item>
+            <el-form-item label="密码" prop="password"
+              ><el-input
+                v-model="form.password"
+                size="large"
+                type="password"
+                show-password
+                autocomplete="current-password"
+                @keyup.enter="submit"
+            /></el-form-item>
+          </div>
+          <p class="login-hint"><span>预置账号 linjie@quji.cn</span><span>预置密码 123456</span></p>
           <el-button
             type="primary"
             size="large"
             :loading="session.loading"
             native-type="submit"
             class="login-submit"
-            >进入协同平台 →</el-button
           >
-          <div class="register-entry">
-            <span>还没有主办方账号？</span><RouterLink to="/register">首次入驻注册</RouterLink>
-          </div></el-form
-        >
+            进入协同平台<ArrowRight :size="16" />
+          </el-button>
+          <button
+            v-if="form.role === 'organizer'"
+            type="button"
+            class="register-entry"
+            @click="router.push('/register')"
+          >
+            <UserPlus :size="16" />首次入驻注册
+          </button>
+          <p class="register-note">新主办方先完成手机号注册 实名核验与主体材料审核</p>
+        </el-form>
       </section>
     </main>
   </div>
@@ -131,19 +168,39 @@ async function submit() {
 
 <style scoped lang="scss">
 .login-page {
+  position: relative;
   min-height: 100vh;
-  color: #172033;
-  background: linear-gradient(130deg, #eef5fa 0%, #f9f5eb 54%, #eff7f4 100%);
+  overflow: hidden;
+  background: #eef3f3;
+  color: #0f172a;
+}
+.login-background {
+  position: absolute;
+  inset: -24px;
+  background: url('/images/quji-xinjiang-login-background.webp') center/cover no-repeat;
+  animation: scenic-drift 28s cubic-bezier(0.23, 1, 0.32, 1) infinite alternate;
+}
+.login-overlay {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(
+    90deg,
+    rgb(255 255 255 / 0.86),
+    rgb(255 255 255 / 0.52) 54%,
+    rgb(255 255 255 / 0.26)
+  );
 }
 .login-header {
+  position: relative;
+  z-index: 2;
   display: flex;
-  height: 70px;
+  height: 80px;
   align-items: center;
   justify-content: space-between;
-  padding: 0 clamp(20px, 4vw, 60px);
-  border-bottom: 1px solid rgb(255 255 255 / 0.62);
+  padding: 0 clamp(20px, 4vw, 48px);
+  border-bottom: 1px solid rgb(255 255 255 / 0.6);
   background: rgb(255 255 255 / 0.7);
-  backdrop-filter: blur(12px);
+  backdrop-filter: blur(18px);
 }
 .login-brand {
   display: flex;
@@ -152,219 +209,295 @@ async function submit() {
 }
 .login-brand__mark {
   display: grid;
-  width: 34px;
-  height: 34px;
+  width: 36px;
+  height: 36px;
   place-items: center;
   border-radius: 8px;
-  background: #1d5fc6;
+  background: #255ec8;
   color: #fff;
-  font-weight: 800;
+}
+.login-brand > span:last-child {
+  display: grid;
+  gap: 2px;
 }
 .login-brand b {
-  display: block;
   font-size: 16px;
+  font-weight: 600;
 }
 .login-brand small {
-  display: block;
-  margin-top: 1px;
-  color: #667085;
-  font-size: 11px;
+  color: #64748b;
+  font-size: 12px;
 }
 .language {
-  color: #667085;
-  font-size: 13px;
+  display: flex;
+  gap: 2px;
+  padding: 4px;
+  border-radius: 8px;
+  background: #f1f5f9;
+}
+.language button {
+  min-height: 28px;
+  padding: 0 10px;
+  border: 0;
+  border-radius: 6px;
+  background: transparent;
+  color: #64748b;
+  font-size: 12px;
+}
+.language button.active {
+  background: #fff;
+  color: #0f172a;
+  font-weight: 600;
+  box-shadow: 0 1px 2px rgb(15 23 42 / 0.06);
 }
 .login-main {
+  position: relative;
+  z-index: 1;
   display: grid;
-  min-height: calc(100vh - 70px);
-  grid-template-columns: minmax(0, 1fr) minmax(520px, 0.95fr);
-  align-items: center;
-  gap: clamp(32px, 7vw, 110px);
-  max-width: 1320px;
+  width: min(1220px, calc(100% - 40px));
   margin: 0 auto;
-  padding: 60px 48px;
+  padding: 48px 0;
+  grid-template-columns: minmax(0, 0.9fr) minmax(520px, 1.05fr);
+  gap: 56px;
+  align-items: center;
 }
 .login-intro {
   max-width: 510px;
+  padding: 32px;
+  border: 1px solid rgb(255 255 255 / 0.72);
+  border-radius: 12px;
+  background: rgb(255 255 255 / 0.62);
+  box-shadow: 0 16px 50px rgb(35 69 87 / 0.1);
+  backdrop-filter: blur(14px);
 }
 .intro-tag {
   display: inline-flex;
-  padding: 6px 10px;
-  border-radius: 5px;
-  background: #eaf2ff;
-  color: #1d5fc6;
-  font-size: 13px;
-  font-weight: 700;
+  padding: 5px 10px;
+  border: 1px solid #bfdbfe;
+  border-radius: 999px;
+  background: #eff6ff;
+  color: #1c4c9e;
+  font-size: 12px;
+  font-weight: 600;
 }
 .login-intro h1 {
-  margin: 24px 0 14px;
-  font-size: clamp(40px, 4.4vw, 62px);
-  line-height: 1.16;
+  margin: 20px 0 0;
+  color: #0f172a;
+  font-size: clamp(38px, 4vw, 48px);
+  font-weight: 600;
   letter-spacing: -0.06em;
+  line-height: 1.12;
 }
 .login-intro p {
-  max-width: 480px;
-  color: #475467;
+  display: grid;
+  gap: 2px;
+  margin: 20px 0 0;
+  color: #334155;
   font-size: 17px;
-  line-height: 1.85;
-  text-wrap: pretty;
+  line-height: 1.75;
+}
+.login-intro p span {
+  display: block;
 }
 .intro-stats {
   display: grid;
+  margin-top: 32px;
   grid-template-columns: repeat(3, 1fr);
   gap: 12px;
-  margin-top: 32px;
 }
-.intro-stats div {
+.intro-stats > div {
   display: grid;
-  gap: 5px;
-  padding: 16px;
-  border: 1px solid rgb(255 255 255 / 0.8);
+  gap: 4px;
+  padding: 12px;
+  border: 1px solid #e2e8f0;
   border-radius: 8px;
-  background: rgb(255 255 255 / 0.76);
-  box-shadow: 0 1px 2px rgb(16 24 40 / 0.04);
+  background: #fff;
 }
 .intro-stats strong {
   font-size: 22px;
+  font-weight: 600;
 }
 .intro-stats span {
-  color: #667085;
+  color: #475569;
   font-size: 12px;
 }
 .login-card {
   padding: 32px;
-  border: 1px solid rgb(255 255 255 / 0.86);
+  border: 1px solid #fff;
   border-radius: 12px;
-  background: rgb(255 255 255 / 0.9);
-  box-shadow: 0 16px 50px rgb(40 73 98 / 0.13);
+  background: rgb(255 255 255 / 0.95);
+  box-shadow: 0 22px 70px rgb(35 69 87 / 0.18);
+  backdrop-filter: blur(18px);
 }
 .login-card__heading > span {
-  color: #667085;
-  font-size: 13px;
-  font-weight: 700;
+  color: #255ec8;
+  font-size: 12px;
+  font-weight: 600;
 }
 .login-card__heading h2 {
-  margin: 5px 0 4px;
-  font-size: 25px;
-  letter-spacing: -0.03em;
+  margin: 7px 0 0;
+  color: #0f172a;
+  font-size: 26px;
+  font-weight: 600;
 }
 .login-card__heading p {
-  margin: 0;
-  color: #667085;
+  margin: 6px 0 0;
+  color: #64748b;
   font-size: 14px;
 }
 .role-grid {
   display: grid;
-  grid-template-columns: 1fr 1fr;
+  margin-top: 24px;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 12px;
-  margin: 22px 0;
 }
 .role-card {
-  display: grid;
-  gap: 8px;
-  min-height: 130px;
+  position: relative;
+  min-height: 138px;
   padding: 16px;
-  border: 1px solid #e4e7ec;
+  border: 1px solid #e2e8f0;
   border-radius: 8px;
-  background: #fff;
-  color: #475467;
-  cursor: pointer;
+  background: rgb(255 255 255 / 0.82);
+  color: #0f172a;
   text-align: left;
-  transition:
-    border-color 0.15s ease,
-    background 0.15s ease;
-}
-.role-card strong {
-  color: #172033;
-  font-size: 15px;
-}
-.role-card span {
-  color: #667085;
-  font-size: 13px;
-  line-height: 1.55;
 }
 .role-card--active {
-  border: 2px solid #1d5fc6;
-  background: #f5f9ff;
+  border-color: #255ec8;
+  background: #eff6ff;
+  box-shadow: 0 0 0 1px #255ec8;
 }
-.role-card--active :deep(svg) {
-  color: #1d5fc6;
+.role-card__icon {
+  display: grid;
+  width: 36px;
+  height: 36px;
+  place-items: center;
+  border-radius: 8px;
+  color: #fff;
 }
-.login-form :deep(.el-form-item) {
-  margin-bottom: 14px;
+.role-card > strong {
+  display: block;
+  margin-top: 12px;
+  font-size: 16px;
+  line-height: 20px;
+  white-space: nowrap;
 }
-.login-form :deep(.el-form-item__label) {
-  color: #344054;
-  font-weight: 650;
+.role-card small {
+  display: grid;
+  margin-top: 8px;
+  color: #475569;
+  font-size: 13px;
+  line-height: 20px;
 }
-.demo-hint {
-  margin: 0 0 16px;
-  color: #667085;
-  font-size: 12px;
-  line-height: 1.6;
+.role-card small span {
+  white-space: nowrap;
+}
+.login-form {
+  margin-top: 24px;
+}
+.login-fields {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 16px;
+}
+.login-fields :deep(.el-form-item__label) {
+  color: #0f172a;
+  font-size: 14px;
+  font-weight: 600;
+}
+.login-fields :deep(.el-input__wrapper) {
+  min-height: 44px;
+  border-radius: 8px;
+  background: #f8fafc;
+}
+.login-hint {
+  display: grid;
+  margin: -4px 0 0;
+  color: #64748b;
+  font-size: 13px;
+  line-height: 20px;
 }
 .login-submit {
   width: 100%;
+  min-height: 48px;
+  margin-top: 20px;
+  gap: 8px;
+  border-radius: 8px;
+  font-size: 15px;
 }
 .register-entry {
   display: flex;
-  min-height: 40px;
+  width: 100%;
+  min-height: 44px;
   align-items: center;
   justify-content: center;
   gap: 8px;
-  margin-top: 14px;
-  padding: 8px 12px;
-  border: 1px solid #b2ddff;
-  border-radius: 7px;
-  background: #f5faff;
-  color: #475467;
+  margin-top: 12px;
+  border: 1px solid #255ec8;
+  border-radius: 8px;
+  background: #fff;
+  color: #1c4c9e;
   font-size: 14px;
+  font-weight: 600;
 }
-.register-entry a {
-  color: #1d5fc6;
-  font-weight: 700;
+.register-note {
+  margin: 10px 0 0;
+  color: #64748b;
+  font-size: 12px;
+  text-align: center;
 }
-@media (max-width: 960px) {
+@keyframes scenic-drift {
+  from {
+    transform: scale(1.02) translate3d(-0.25%, -0.2%, 0);
+  }
+  to {
+    transform: scale(1.05) translate3d(0.3%, 0.25%, 0);
+  }
+}
+@media (max-width: 980px) {
   .login-main {
+    padding: 28px 0 40px;
     grid-template-columns: 1fr;
-    max-width: 680px;
-    padding: 38px 24px;
+    gap: 24px;
   }
   .login-intro {
     max-width: none;
   }
-  .login-intro p {
-    max-width: 600px;
-  }
-  .login-card {
-    padding: 24px;
-  }
 }
-@media (max-width: 540px) {
+@media (max-width: 640px) {
   .login-header {
-    height: 62px;
+    height: 64px;
     padding: 0 16px;
   }
-  .language {
-    font-size: 11px;
+  .login-brand small {
+    display: none;
+  }
+  .language button {
+    padding: 0 7px;
   }
   .login-main {
-    padding: 28px 16px;
+    width: calc(100% - 28px);
+  }
+  .login-intro,
+  .login-card {
+    padding: 20px;
   }
   .login-intro h1 {
-    font-size: 38px;
+    font-size: 34px;
   }
   .login-intro p {
     font-size: 15px;
   }
-  .role-grid {
+  .role-grid,
+  .login-fields {
     grid-template-columns: 1fr;
   }
   .role-card {
-    min-height: 102px;
+    min-height: 124px;
   }
-  .intro-stats {
-    margin-top: 22px;
+}
+@media (prefers-reduced-motion: reduce) {
+  .login-background {
+    animation: none;
   }
 }
 </style>
