@@ -2,6 +2,21 @@
 
 这是一个基于 **Vue 3、TypeScript、Pinia、Element Plus 与 Vite** 的文化活动协同后台前端。项目保留预置账号登录，同时提供主办方首次入驻、主体材料审核和审核后活动创建的可操作前端状态机。
 
+**当前正式版本：v1.3.0**
+
+## 从 GitHub 使用
+
+公开仓库的 `main` 分支就是当前可用的 **v1.3.0** 完整源码，开发团队可直接克隆：
+
+```bash
+git clone https://github.com/2408370886JQW/quji-event-platform-vue3.git
+cd quji-event-platform-vue3
+pnpm install
+pnpm dev
+```
+
+需要生产部署时执行 `pnpm build`，生成的 `dist/` 可部署到 Nginx、对象存储或其他静态服务器。仓库已经包含全部本地图片、Lucide 图标依赖、文档、测试和 API 契约，不依赖 Manus 临时资源。
+
 ## 本地运行
 
 ```bash
