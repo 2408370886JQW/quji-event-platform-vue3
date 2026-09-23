@@ -18,14 +18,27 @@ export const ONBOARDING_STORAGE_KEY = 'quji_onboarding_state'
 const createDefaultMaterials = (): OnboardingMaterial[] => [
   {
     key: 'business_license',
-    name: '营业执照',
+    name: '营业执照或主体登记证明',
+    required: true,
+    status: 'not_uploaded',
+  },
+  {
+    key: 'legal_representative_id_front',
+    name: '法定代表人身份证正面',
+    required: true,
+    status: 'not_uploaded',
+  },
+  {
+    key: 'legal_representative_id_back',
+    name: '法定代表人身份证反面',
     required: true,
     status: 'not_uploaded',
   },
   {
     key: 'agent_authorization',
-    name: '经办人身份证/授权',
-    required: true,
+    name: '经办授权书',
+    required: false,
+    conditional: true,
     status: 'not_uploaded',
   },
   {
@@ -43,60 +56,125 @@ const createDefaultMaterials = (): OnboardingMaterial[] => [
   },
 ]
 
+function applyMaterialRequirements(state: OnboardingState) {
+  const authorization = state.materials.find((material) => material.key === 'agent_authorization')
+  if (authorization) {
+    authorization.required = state.identity?.agentIdentity === 'authorized_agent'
+    authorization.conditional = true
+  }
+}
+
 export const createInitialOnboardingState = (): OnboardingState => ({
   status: 'not_started',
   materials: createDefaultMaterials(),
 })
 
-export const createApprovedOnboardingState = (): OnboardingState => ({
-  organizerId: 'org-xinghe-001',
-  identity: {
-    phone: '138****0628',
-    name: '林洁',
-    idNumber: '6501**********0628',
-    agentIdentity: 'authorized_agent',
-    authorizationConfirmed: true,
-  },
-  status: 'approved',
-  submittedAt: '2026-06-10T10:20:00.000Z',
-  reviewedAt: '2026-06-11T16:30:00.000Z',
-  materials: createDefaultMaterials().map((material) => {
-    const samples: Record<
-      OnboardingMaterialKey,
-      Pick<OnboardingMaterial, 'fileName' | 'previewUrl' | 'isImage'>
-    > = {
-      business_license: {
-        fileName: '营业执照或主体登记证明.webp',
-        previewUrl: '/materials/quji-public-license-sample.webp',
-        isImage: true,
-      },
-      agent_authorization: {
-        fileName: '法定代表人身份证明或经办授权材料.webp',
-        previewUrl: '/materials/quji-public-identity-sample.webp',
-        isImage: true,
-      },
-      safety_manager: {
-        fileName: '主体安全责任人信息表.pdf',
-        previewUrl: '/materials/quji-public-identity-sample.webp',
-        isImage: true,
-      },
-      business_permit: {
-        fileName: '经营性业务相关许可.webp',
-        previewUrl: '/materials/quji-public-permit-sample.webp',
-        isImage: true,
-      },
+export const createApprovedOnboardingState = (): OnboardingState => {
+  const state: OnboardingState = {
+    organizerId: 'org-xinghe-001',
+    identity: {
+      phone: '138****0628',
+      name: '林洁',
+      idNumber: '6501**********0628',
+      agentIdentity: 'authorized_agent',
+      authorizationConfirmed: true,
+    },
+    status: 'approved',
+    submittedAt: '2026-06-10T10:20:00.000Z',
+    reviewedAt: '2026-06-11T16:30:00.000Z',
+    materials: createDefaultMaterials(),
+  }
+
+  applyMaterialRequirements(state)
+  const samples: Record<
+    OnboardingMaterialKey,
+    Pick<OnboardingMaterial, 'fileName' | 'fileType' | 'previewUrl' | 'isImage'>
+  > = {
+    business_license: {
+      fileName: '营业执照或主体登记证明.webp',
+      fileType: 'image/webp',
+      previewUrl: '/materials/quji-public-license-sample.webp',
+      isImage: true,
+    },
+    legal_representative_id_front: {
+      fileName: '法定代表人身份证正面.webp',
+      fileType: 'image/webp',
+      previewUrl: '/materials/quji-public-identity-sample.webp',
+      isImage: true,
+    },
+    legal_representative_id_back: {
+      fileName: '法定代表人身份证反面.webp',
+      fileType: 'image/webp',
+      previewUrl: '/materials/quji-public-identity-back-sample.webp',
+      isImage: true,
+    },
+    agent_authorization: {
+      fileName: '经办授权书.webp',
+      fileType: 'image/webp',
+      previewUrl: '/materials/quji-public-authorization-sample.webp',
+      isImage: true,
+    },
+    safety_manager: {
+      fileName: '主体安全责任人信息表.pdf',
+      fileType: 'application/pdf',
+      previewUrl: '/materials/quji-public-identity-sample.webp',
+      isImage: true,
+    },
+    business_permit: {
+      fileName: '经营性业务相关许可.webp',
+      fileType: 'image/webp',
+      previewUrl: '/materials/quji-public-permit-sample.webp',
+      isImage: true,
+    },
+  }
+
+  state.materials = state.materials.map((material) => ({
+    ...material,
+    ...samples[material.key],
+    fileSize: 78590,
+    source: 'sample' as const,
+    status: 'approved' as const,
+    updatedAt: '2026-06-11 16:30',
+  }))
+  return state
+}
+
+function mergeSavedMaterials(saved: Partial<OnboardingState>): OnboardingMaterial[] {
+  const savedMaterials = new Map((saved.materials || []).map((material) => [material.key, material]))
+  const legacyAuthorization = savedMaterials.get('agent_authorization')
+
+  return createDefaultMaterials().map((material) => {
+    const current = savedMaterials.get(material.key)
+    if (current) {
+      return {
+        ...material,
+        ...current,
+        previewUrl: current.previewUrl?.startsWith('blob:') ? undefined : current.previewUrl,
+      }
     }
+
+    const isLegacyIdentitySide =
+      material.key === 'legal_representative_id_front' || material.key === 'legal_representative_id_back'
+    if (!legacyAuthorization || !isLegacyIdentitySide) return material
+
+    if (material.key === 'legal_representative_id_back' && saved.status !== 'approved') return material
+
     return {
       ...material,
-      ...samples[material.key],
-      fileType: material.key === 'safety_manager' ? 'application/pdf' : 'image/webp',
-      fileSize: 78590,
-      source: 'sample' as const,
-      status: 'approved' as const,
-      updatedAt: '2026-06-11 16:30',
+      ...legacyAuthorization,
+      key: material.key,
+      name: material.name,
+      fileName: saved.status === 'approved' ? `${material.name}.webp` : legacyAuthorization.fileName,
+      previewUrl:
+        material.key === 'legal_representative_id_front'
+          ? '/materials/quji-public-identity-sample.webp'
+          : '/materials/quji-public-identity-back-sample.webp',
+      required: true,
+      reviewComment:
+        saved.status === 'approved' ? undefined : '该文件由旧版合并材料迁移，请分别确认身份证正反面。',
     }
-  }),
-})
+  })
+}
 
 function readState(): OnboardingState {
   const raw = localStorage.getItem(ONBOARDING_STORAGE_KEY)
@@ -104,29 +182,29 @@ function readState(): OnboardingState {
 
   try {
     const saved = JSON.parse(raw) as Partial<OnboardingState>
-    const savedMaterials = new Map((saved.materials || []).map((material) => [material.key, material]))
-    return {
+    const state: OnboardingState = {
       ...createInitialOnboardingState(),
       ...saved,
-      materials: createDefaultMaterials().map((material) => ({
-        ...material,
-        ...savedMaterials.get(material.key),
-      })),
+      materials: mergeSavedMaterials(saved),
     }
+    applyMaterialRequirements(state)
+    return state
   } catch {
     return createInitialOnboardingState()
   }
 }
 
+function isMaterialPrepared(material: OnboardingMaterial) {
+  return Boolean(material.fileName) && ['uploaded', 'under_review', 'approved'].includes(material.status)
+}
+
 export const useOnboardingStore = defineStore('onboarding', () => {
   const state = ref<OnboardingState>(readState())
-  const requiredMaterialsComplete = computed(() =>
-    state.value.materials
-      .filter((material) => material.required)
-      .every(
-        (material) =>
-          Boolean(material.fileName) && ['uploaded', 'under_review', 'approved'].includes(material.status),
-      ),
+  const requiredMaterials = computed(() => state.value.materials.filter((material) => material.required))
+  const requiredMaterialCount = computed(() => requiredMaterials.value.length)
+  const preparedRequiredCount = computed(() => requiredMaterials.value.filter(isMaterialPrepared).length)
+  const requiredMaterialsComplete = computed(
+    () => requiredMaterials.value.length > 0 && requiredMaterials.value.every(isMaterialPrepared),
   )
   const canSubmit = computed(
     () =>
@@ -146,6 +224,18 @@ export const useOnboardingStore = defineStore('onboarding', () => {
       organizerId,
       identity,
       status: state.value.status === 'approved' ? 'approved' : 'identity_completed',
+    }
+    applyMaterialRequirements(state.value)
+    persist()
+  }
+
+  function setAgentIdentity(agentIdentity: RegistrationIdentity['agentIdentity']) {
+    if (!state.value.identity) throw new Error('请先完成实名信息')
+    state.value.identity.agentIdentity = agentIdentity
+    applyMaterialRequirements(state.value)
+    if (state.value.status !== 'approved' && state.value.status !== 'submitted') {
+      state.value.status = 'materials_draft'
+      state.value.reviewComment = undefined
     }
     persist()
   }
@@ -222,10 +312,13 @@ export const useOnboardingStore = defineStore('onboarding', () => {
 
   return {
     state,
+    requiredMaterialCount,
+    preparedRequiredCount,
     requiredMaterialsComplete,
     canSubmit,
     canCreateActivity,
     setIdentity,
+    setAgentIdentity,
     uploadMaterial,
     submitForReview,
     requestChanges,

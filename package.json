@@ -1,7 +1,7 @@
 {
   "name": "quji-cultural-event-platform-vue3",
   "private": true,
-  "version": "1.3.0",
+  "version": "1.3.1",
   "type": "module",
   "description": "趣集文化活动协同管理平台前端（Vue3 + Vite + TypeScript）",
   "scripts": {
@@ -11,7 +11,9 @@
     "typecheck": "vue-tsc --noEmit",
     "lint": "eslint . --max-warnings=0",
     "format": "prettier --write .",
-    "test": "vitest run"
+    "test": "vitest run",
+    "test:e2e": "cypress run --browser chrome",
+    "test:e2e:open": "cypress open"
   },
   "dependencies": {
     "@lucide/vue": "^1.47.0",
@@ -27,6 +29,7 @@
     "@vitejs/plugin-vue": "^6.0.8",
     "@vue/test-utils": "^2.5.1",
     "@vue/tsconfig": "^0.9.1",
+    "cypress": "16.1.0",
     "eslint": "^10.11.0",
     "eslint-config-prettier": "^10.1.8",
     "eslint-plugin-vue": "^10.11.0",

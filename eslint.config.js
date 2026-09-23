@@ -24,6 +24,10 @@ export default tseslint.config(
     files: ['src/**/*.{ts,vue}'],
     languageOptions: {
       globals: {
+        Event: 'readonly',
+        File: 'readonly',
+        FileReader: 'readonly',
+        HTMLInputElement: 'readonly',
         window: 'readonly',
         document: 'readonly',
         localStorage: 'readonly',
@@ -34,6 +38,19 @@ export default tseslint.config(
       '@typescript-eslint/no-explicit-any': 'error',
       'vue/multi-word-component-names': 'off',
       'vue/require-default-prop': 'off',
+    },
+  },
+  {
+    files: ['cypress/**/*.ts', 'cypress.config.ts'],
+    languageOptions: {
+      globals: {
+        beforeEach: 'readonly',
+        Cypress: 'readonly',
+        cy: 'readonly',
+        describe: 'readonly',
+        expect: 'readonly',
+        it: 'readonly',
+      },
     },
   },
   prettier,

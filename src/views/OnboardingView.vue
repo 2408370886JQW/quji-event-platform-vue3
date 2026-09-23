@@ -7,8 +7,10 @@ import {
   Check,
   CircleCheck,
   Eye,
+  FileSignature,
   FileCheck2,
   FileText,
+  IdCard,
   Plus,
   Send,
   ShieldCheck,
@@ -29,7 +31,9 @@ const safetyForm = reactive({
 
 const sampleAssets: Partial<Record<OnboardingMaterialKey, string>> = {
   business_license: '/materials/quji-public-license-sample.webp',
-  agent_authorization: '/materials/quji-public-identity-sample.webp',
+  legal_representative_id_front: '/materials/quji-public-identity-sample.webp',
+  legal_representative_id_back: '/materials/quji-public-identity-back-sample.webp',
+  agent_authorization: '/materials/quji-public-authorization-sample.webp',
   business_permit: '/materials/quji-public-permit-sample.webp',
 }
 
@@ -38,9 +42,17 @@ const materialGuides: Record<OnboardingMaterialKey, { title: string; lines: stri
     title: '营业执照或主体登记证明',
     lines: ['上传清晰完整的证照页面', '确保证照名称、主体名称和有效期可辨认'],
   },
+  legal_representative_id_front: {
+    title: '法定代表人身份证正面',
+    lines: ['上传法定代表人身份证人像面', '证件边缘完整 姓名和身份证号清晰可辨'],
+  },
+  legal_representative_id_back: {
+    title: '法定代表人身份证反面',
+    lines: ['上传同一张身份证的国徽面', '签发机关和有效期限清晰可辨'],
+  },
   agent_authorization: {
-    title: '法定代表人身份证明或经办授权材料',
-    lines: ['上传法定代表人身份证明或经办授权文件', '确保证件与授权关系相互对应'],
+    title: '经办授权书',
+    lines: ['仅被授权经办人办理时上传', '应包含委托主体 经办人 授权事项 签署或盖章'],
   },
   safety_manager: {
     title: '主体安全责任人信息',
@@ -61,7 +73,7 @@ const statusDetails: Record<OnboardingStatus, { label: string; title: string; de
   identity_completed: {
     label: '待上传主体材料',
     title: '实名信息已完成',
-    description: '继续上传主体证明、授权材料与安全责任人信息。',
+    description: '继续上传主体证明、法定代表人身份证正反面与安全责任人信息。',
   },
   materials_draft: {
     label: '主体材料准备中',
@@ -105,9 +117,53 @@ const activeStep = computed(() => {
 const isEditable = computed(
   () => onboarding.state.status !== 'submitted' && onboarding.state.status !== 'approved',
 )
-const preparedRequiredCount = computed(
-  () => onboarding.state.materials.filter((item) => item.required && item.fileName).length,
+const identityMode = computed({
+  get: () => onboarding.state.identity?.agentIdentity || 'authorized_agent',
+  set: (value: 'legal_representative' | 'authorized_agent') => onboarding.setAgentIdentity(value),
+})
+const identityMaterials = computed(() => {
+  const keys: OnboardingMaterialKey[] = ['legal_representative_id_front', 'legal_representative_id_back']
+  if (identityMode.value === 'authorized_agent') keys.push('agent_authorization')
+  return keys
+    .map((key) => onboarding.state.materials.find((item) => item.key === key))
+    .filter((item): item is OnboardingMaterial => Boolean(item))
+})
+const standaloneMaterials = computed(() =>
+  onboarding.state.materials.filter((item) =>
+    ['business_license', 'safety_manager', 'business_permit'].includes(item.key),
+  ),
 )
+const identityModeSummary = computed(() =>
+  identityMode.value === 'legal_representative'
+    ? '法定代表人本人办理 无需上传经办授权书'
+    : '由被授权经办人办理 需同时上传经办授权书',
+)
+const identityFrontReady = computed(() =>
+  Boolean(onboarding.state.materials.find((item) => item.key === 'legal_representative_id_front')?.fileName),
+)
+const identityBackReady = computed(() =>
+  Boolean(onboarding.state.materials.find((item) => item.key === 'legal_representative_id_back')?.fileName),
+)
+
+function canChooseIdentityMaterial(key: OnboardingMaterialKey) {
+  if (key === 'legal_representative_id_back') return identityFrontReady.value
+  if (key === 'agent_authorization') return identityFrontReady.value && identityBackReady.value
+  return true
+}
+
+function identityStepNote(key: OnboardingMaterialKey) {
+  if (key === 'legal_representative_id_front') return '第一步 先上传人像面'
+  if (key === 'legal_representative_id_back') return '第二步 再上传国徽面'
+  return '第三步 经办人补充授权书'
+}
+
+function uploadActionLabel(material: OnboardingMaterial) {
+  if (material.fileName) return '重新上传'
+  if (material.key === 'legal_representative_id_front') return '上传正面'
+  if (material.key === 'legal_representative_id_back') return '上传反面'
+  if (material.key === 'agent_authorization') return '上传授权书'
+  return '选择本地文件'
+}
 const selectedSampleAsset = computed(() =>
   selectedMaterial.value ? sampleAssets[selectedMaterial.value.key] : undefined,
 )
@@ -115,8 +171,21 @@ const selectedPreviewUrl = computed(() => selectedMaterial.value?.previewUrl || 
 const selectedPreviewIsSample = computed(
   () =>
     Boolean(selectedMaterial.value) &&
-    (!selectedMaterial.value?.fileName || selectedMaterial.value?.source === 'sample'),
+    (!selectedMaterial.value?.fileName ||
+      selectedMaterial.value?.source === 'sample' ||
+      !selectedMaterial.value?.previewUrl),
 )
+const selectedSampleLabel = computed(() => {
+  if (!selectedMaterial.value) return '公开样例'
+  if (
+    selectedMaterial.value.key === 'legal_representative_id_front' ||
+    selectedMaterial.value.key === 'legal_representative_id_back'
+  ) {
+    return 'Wikimedia Commons 公开样例'
+  }
+  if (selectedMaterial.value.key === 'agent_authorization') return '政府公开空白样例'
+  return '政府公开样例'
+})
 const submitPanelText = computed(() => {
   if (onboarding.state.status === 'approved') return '主体认证已通过，可以开始创建活动。'
   if (onboarding.state.status === 'submitted') return '材料已提交，正在等待平台审核。'
@@ -135,24 +204,41 @@ function materialLines(material: OnboardingMaterial) {
 }
 
 function fileInput(key: OnboardingMaterialKey) {
-  const input = document.createElement('input')
-  input.type = 'file'
-  input.accept = 'image/*,.pdf,.doc,.docx'
-  input.onchange = () => {
-    const file = input.files?.[0]
-    if (!file) return
-    const isImage = file.type.startsWith('image/')
-    onboarding.uploadMaterial(key, {
-      fileName: file.name,
-      fileType: file.type,
-      fileSize: file.size,
-      previewUrl: isImage ? globalThis.URL.createObjectURL(file) : undefined,
-      isImage,
-      source: 'upload',
-    })
-    ElMessage.success('材料已保存至主体资料草稿')
+  document.querySelector<HTMLInputElement>(`input[data-material-key="${key}"]`)?.click()
+}
+
+function readImagePreview(file: File) {
+  return new Promise<string>((resolve, reject) => {
+    const reader = new FileReader()
+    reader.onload = () => resolve(String(reader.result || ''))
+    reader.onerror = () => reject(new Error('图片预览读取失败'))
+    reader.readAsDataURL(file)
+  })
+}
+
+async function handleFileChange(key: OnboardingMaterialKey, event: Event) {
+  const input = event.target as HTMLInputElement
+  const file = input.files?.[0]
+  if (!file) return
+  const isImage = file.type.startsWith('image/')
+  let previewUrl: string | undefined
+  if (isImage) {
+    try {
+      previewUrl = await readImagePreview(file)
+    } catch {
+      ElMessage.warning('文件已保存 但图片预览生成失败')
+    }
   }
-  input.click()
+  onboarding.uploadMaterial(key, {
+    fileName: file.name,
+    fileType: file.type,
+    fileSize: file.size,
+    previewUrl,
+    isImage,
+    source: 'upload',
+  })
+  input.value = ''
+  ElMessage.success(`${materialGuides[key].title}已保存`)
 }
 
 function useSample(material: OnboardingMaterial) {
@@ -292,9 +378,11 @@ function materialLabel(status: OnboardingMaterial['status']) {
           >
         </div>
         <div>
-          <span>经办人身份</span>
+          <span>办理身份</span>
           <strong>{{
-            onboarding.state.identity.agentIdentity === 'legal_representative' ? '法定代表人' : '被授权经办人'
+            onboarding.state.identity.agentIdentity === 'legal_representative'
+              ? '法定代表人本人办理'
+              : '被授权经办人办理'
           }}</strong>
         </div>
       </div>
@@ -305,83 +393,195 @@ function materialLabel(status: OnboardingMaterial['status']) {
         <div>
           <h2 class="q-panel__title">主体材料</h2>
           <p class="q-panel__desc">
-            <span>逐项上传并查看实际文件内容</span>
-            <span>标注“如适用”的材料可根据活动性质补充</span>
+            <span>法定代表人身份证正面和反面需分别上传</span>
+            <span>被授权经办人办理时 还需补充经办授权书</span>
           </p>
         </div>
-        <span class="completion-count">必填完成 {{ preparedRequiredCount }} / 3</span>
+        <span class="completion-count"
+          >必填完成 {{ onboarding.preparedRequiredCount }} / {{ onboarding.requiredMaterialCount }}</span
+        >
       </div>
 
-      <div class="material-grid q-panel__body">
-        <article
-          v-for="material in onboarding.state.materials"
-          :key="material.key"
-          class="onboarding-material-card"
-          :class="{ 'is-uploaded': material.fileName }"
-        >
-          <div class="material-card__top">
-            <div class="material-card__heading">
-              <div class="material-card__title">
-                <h3>{{ materialTitle(material) }}</h3>
-                <span v-if="material.conditional" class="conditional">如适用</span>
-              </div>
-              <span class="material-card__required">{{ material.required ? '必填材料' : '选填材料' }}</span>
-            </div>
-            <span class="material-state" :class="`material-state--${material.status}`">
-              {{ materialLabel(material.status) }}
-            </span>
-          </div>
-
-          <p class="material-card__copy">
-            <span v-for="line in materialLines(material)" :key="line">{{ line }}</span>
-          </p>
-
-          <div v-if="material.fileName" class="uploaded-file">
-            <FileCheck2 :size="20" />
+      <div class="materials-content q-panel__body">
+        <article class="identity-material-group" data-cy="identity-material-group">
+          <div class="identity-material-group__header">
             <div>
-              <strong>{{ material.fileName }}</strong>
-              <span>{{
-                material.updatedAt || (material.source === 'sample' ? '已使用公开样例' : '本地文件已保存')
-              }}</span>
+              <span class="group-index"><IdCard :size="17" />身份材料</span>
+              <h3>法定代表人身份证明与经办授权</h3>
+              <p>先确认本次由谁办理，再按顺序上传对应文件。</p>
             </div>
+            <span class="group-status">{{ identityModeSummary }}</span>
           </div>
 
-          <div v-if="material.key === 'safety_manager' && isEditable" class="safety-form">
-            <label>
-              <span>安全责任人</span>
-              <el-input v-model="safetyForm.name" aria-label="安全责任人姓名" placeholder="请输入姓名" />
-            </label>
-            <label>
-              <span>联系电话</span>
-              <el-input v-model="safetyForm.phone" aria-label="安全责任人手机号" placeholder="请输入手机号" />
-            </label>
-            <label class="safety-form__position">
-              <span>岗位</span>
-              <el-input
-                v-model="safetyForm.position"
-                aria-label="安全责任人岗位"
-                placeholder="主体安全责任人"
-              />
-            </label>
-          </div>
-
-          <div class="material-card__actions">
-            <el-button plain @click="openMaterial(material)">
-              <Eye :size="16" />{{ material.fileName ? '查看已上传文件' : '查看要求' }}
-            </el-button>
-            <el-button
-              v-if="material.key === 'safety_manager' && isEditable"
-              type="primary"
-              @click="saveSafetyManager"
+          <div class="handling-mode">
+            <div>
+              <strong>本次由谁办理</strong>
+              <span>选择后系统会自动调整必填材料和完成数量</span>
+            </div>
+            <el-radio-group
+              v-model="identityMode"
+              :disabled="!isEditable"
+              class="handling-mode__options"
+              data-cy="handling-mode"
             >
-              保存责任人信息
-            </el-button>
+              <el-radio-button value="legal_representative">法定代表人本人办理</el-radio-button>
+              <el-radio-button value="authorized_agent">被授权经办人办理</el-radio-button>
+            </el-radio-group>
           </div>
 
-          <p v-if="material.reviewComment" class="review-comment">
-            <strong>审核意见：</strong>{{ material.reviewComment }}
-          </p>
+          <div class="identity-upload-grid">
+            <section
+              v-for="(material, index) in identityMaterials"
+              :key="material.key"
+              class="identity-upload-card"
+              :class="{
+                'is-uploaded': material.fileName,
+                'is-locked': !canChooseIdentityMaterial(material.key),
+              }"
+              :data-cy="`identity-upload-${material.key}`"
+            >
+              <div class="identity-upload-card__top">
+                <span class="upload-order">0{{ index + 1 }}</span>
+                <span class="material-state" :class="`material-state--${material.status}`">
+                  {{ materialLabel(material.status) }}
+                </span>
+              </div>
+              <div class="identity-upload-card__heading">
+                <IdCard v-if="material.key !== 'agent_authorization'" :size="20" />
+                <FileSignature v-else :size="20" />
+                <div>
+                  <h4>{{ materialTitle(material) }}</h4>
+                  <span>{{ identityStepNote(material.key) }}</span>
+                </div>
+              </div>
+              <p class="material-card__copy">
+                <span v-for="line in materialLines(material)" :key="line">{{ line }}</span>
+              </p>
+              <div v-if="material.fileName" class="uploaded-file">
+                <FileCheck2 :size="20" />
+                <div>
+                  <strong>{{ material.fileName }}</strong>
+                  <span>{{ material.updatedAt || '本地文件已保存' }}</span>
+                </div>
+              </div>
+              <p v-else-if="!canChooseIdentityMaterial(material.key)" class="sequence-tip">
+                请先完成上一项材料
+              </p>
+              <div class="material-card__actions">
+                <el-button plain @click="openMaterial(material)">
+                  <Eye :size="16" />{{ material.fileName ? '查看文件' : '查看要求' }}
+                </el-button>
+                <el-button
+                  v-if="isEditable"
+                  type="primary"
+                  :disabled="!canChooseIdentityMaterial(material.key)"
+                  @click="fileInput(material.key)"
+                >
+                  <Upload :size="16" />{{ uploadActionLabel(material) }}
+                </el-button>
+              </div>
+              <input
+                class="native-file-input"
+                type="file"
+                accept="image/*,.pdf"
+                :data-material-key="material.key"
+                :data-cy="`file-${material.key}`"
+                @change="handleFileChange(material.key, $event)"
+              />
+              <p v-if="material.reviewComment" class="review-comment">
+                <strong>审核意见：</strong>{{ material.reviewComment }}
+              </p>
+            </section>
+          </div>
         </article>
+
+        <div class="material-grid">
+          <article
+            v-for="material in standaloneMaterials"
+            :key="material.key"
+            class="onboarding-material-card"
+            :class="{ 'is-uploaded': material.fileName }"
+          >
+            <div class="material-card__top">
+              <div class="material-card__heading">
+                <div class="material-card__title">
+                  <h3>{{ materialTitle(material) }}</h3>
+                  <span v-if="material.conditional" class="conditional">如适用</span>
+                </div>
+                <span class="material-card__required">{{ material.required ? '必填材料' : '选填材料' }}</span>
+              </div>
+              <span class="material-state" :class="`material-state--${material.status}`">
+                {{ materialLabel(material.status) }}
+              </span>
+            </div>
+
+            <p class="material-card__copy">
+              <span v-for="line in materialLines(material)" :key="line">{{ line }}</span>
+            </p>
+
+            <div v-if="material.fileName" class="uploaded-file">
+              <FileCheck2 :size="20" />
+              <div>
+                <strong>{{ material.fileName }}</strong>
+                <span>{{
+                  material.updatedAt || (material.source === 'sample' ? '已使用公开样例' : '本地文件已保存')
+                }}</span>
+              </div>
+            </div>
+
+            <div v-if="material.key === 'safety_manager' && isEditable" class="safety-form">
+              <label>
+                <span>安全责任人</span>
+                <el-input v-model="safetyForm.name" aria-label="安全责任人姓名" placeholder="请输入姓名" />
+              </label>
+              <label>
+                <span>联系电话</span>
+                <el-input
+                  v-model="safetyForm.phone"
+                  aria-label="安全责任人手机号"
+                  placeholder="请输入手机号"
+                />
+              </label>
+              <label class="safety-form__position">
+                <span>岗位</span>
+                <el-input
+                  v-model="safetyForm.position"
+                  aria-label="安全责任人岗位"
+                  placeholder="主体安全责任人"
+                />
+              </label>
+            </div>
+
+            <div class="material-card__actions">
+              <el-button plain @click="openMaterial(material)">
+                <Eye :size="16" />{{ material.fileName ? '查看已上传文件' : '查看要求' }}
+              </el-button>
+              <el-button
+                v-if="material.key === 'safety_manager' && isEditable"
+                type="primary"
+                @click="saveSafetyManager"
+              >
+                保存责任人信息
+              </el-button>
+              <el-button v-else-if="isEditable" type="primary" @click="fileInput(material.key)">
+                <Upload :size="16" />{{ uploadActionLabel(material) }}
+              </el-button>
+            </div>
+            <input
+              v-if="material.key !== 'safety_manager'"
+              class="native-file-input"
+              type="file"
+              accept="image/*,.pdf,.doc,.docx"
+              :data-material-key="material.key"
+              :data-cy="`file-${material.key}`"
+              @change="handleFileChange(material.key, $event)"
+            />
+
+            <p v-if="material.reviewComment" class="review-comment">
+              <strong>审核意见：</strong>{{ material.reviewComment }}
+            </p>
+          </article>
+        </div>
       </div>
 
       <div class="submit-panel">
@@ -425,7 +625,7 @@ function materialLabel(status: OnboardingMaterial['status']) {
         </div>
 
         <div v-if="selectedSampleAsset" class="sample-note">
-          <strong>政府公开样例</strong>
+          <strong>{{ selectedSampleLabel }}</strong>
           <span>用于说明材料版式与上传范围</span>
         </div>
 
@@ -698,6 +898,195 @@ function materialLabel(status: OnboardingMaterial['status']) {
 
 .materials-panel {
   overflow: hidden;
+}
+
+.materials-content {
+  display: grid;
+  gap: 16px;
+}
+
+.identity-material-group {
+  padding: 18px;
+  border: 1px solid #bfdbfe;
+  border-radius: 8px;
+  background: #f8fbff;
+}
+
+.identity-material-group__header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 18px;
+}
+
+.identity-material-group__header h3,
+.identity-material-group__header p {
+  margin: 0;
+}
+
+.identity-material-group__header h3 {
+  margin-top: 7px;
+  color: #18212f;
+  font-size: 18px;
+  line-height: 1.5;
+}
+
+.identity-material-group__header p {
+  margin-top: 4px;
+  color: #64748b;
+  font-size: 14px;
+  line-height: 1.65;
+}
+
+.group-index {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  color: #1d4ed8;
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.group-status {
+  flex: none;
+  padding: 5px 8px;
+  border-radius: 4px;
+  background: #dbeafe;
+  color: #1e40af;
+  font-size: 12px;
+  font-weight: 700;
+  line-height: 1.4;
+  white-space: nowrap;
+}
+
+.handling-mode {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 20px;
+  margin-top: 16px;
+  padding: 14px;
+  border: 1px solid #dbe4eb;
+  border-radius: 7px;
+  background: #fff;
+}
+
+.handling-mode > div:first-child {
+  display: grid;
+  gap: 3px;
+}
+
+.handling-mode strong {
+  color: #1e293b;
+  font-size: 14px;
+}
+
+.handling-mode span {
+  color: #64748b;
+  font-size: 13px;
+  line-height: 1.55;
+}
+
+.handling-mode__options {
+  flex: none;
+}
+
+:deep(.handling-mode__options .el-radio-button__inner) {
+  min-height: 40px;
+  padding: 10px 15px;
+  font-weight: 650;
+}
+
+.identity-upload-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  gap: 12px;
+  margin-top: 14px;
+}
+
+.identity-upload-card {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  padding: 15px;
+  border: 1px solid #dfe4ea;
+  border-radius: 7px;
+  background: #fff;
+  transition:
+    border-color 160ms cubic-bezier(0.23, 1, 0.32, 1),
+    transform 160ms cubic-bezier(0.23, 1, 0.32, 1);
+}
+
+.identity-upload-card:hover {
+  border-color: #93b4e6;
+}
+
+.identity-upload-card.is-uploaded {
+  border-color: #86c9b0;
+}
+
+.identity-upload-card.is-locked {
+  background: #f8fafc;
+}
+
+.identity-upload-card__top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.upload-order {
+  color: #245fc4;
+  font-size: 13px;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+}
+
+.identity-upload-card__heading {
+  display: flex;
+  align-items: flex-start;
+  gap: 9px;
+  margin-top: 14px;
+}
+
+.identity-upload-card__heading > svg {
+  flex: none;
+  margin-top: 2px;
+  color: #245fc4;
+}
+
+.identity-upload-card__heading div {
+  display: grid;
+  min-width: 0;
+  gap: 3px;
+}
+
+.identity-upload-card__heading h4 {
+  margin: 0;
+  color: #18212f;
+  font-size: 15px;
+  line-height: 1.5;
+}
+
+.identity-upload-card__heading span {
+  color: #64748b;
+  font-size: 12px;
+  line-height: 1.5;
+}
+
+.sequence-tip {
+  margin: 14px 0 0;
+  padding: 10px 12px;
+  border-radius: 6px;
+  background: #f1f5f9;
+  color: #64748b;
+  font-size: 13px;
+  line-height: 1.55;
+}
+
+.native-file-input {
+  display: none;
 }
 
 .materials-header {
@@ -1041,6 +1430,8 @@ function materialLabel(status: OnboardingMaterial['status']) {
   .onboarding-heading,
   .status-panel,
   .submit-panel,
+  .identity-material-group__header,
+  .handling-mode,
   .preview-dialog__footer {
     align-items: stretch;
     flex-direction: column;
@@ -1053,6 +1444,26 @@ function materialLabel(status: OnboardingMaterial['status']) {
 
   .onboarding-status {
     align-self: flex-start;
+  }
+
+  .group-status {
+    align-self: flex-start;
+    white-space: normal;
+  }
+
+  .handling-mode__options {
+    display: grid;
+    width: 100%;
+    grid-template-columns: 1fr;
+  }
+
+  :deep(.handling-mode__options .el-radio-button),
+  :deep(.handling-mode__options .el-radio-button__inner) {
+    width: 100%;
+  }
+
+  .identity-upload-grid {
+    grid-template-columns: 1fr;
   }
 
   .safety-form {

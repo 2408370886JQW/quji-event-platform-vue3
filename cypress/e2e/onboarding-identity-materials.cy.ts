@@ -1,0 +1,138 @@
+/// <reference types="cypress" />
+
+const session = {
+  token: 'cypress-organizer-token',
+  user: {
+    id: 'cypress-organizer',
+    name: '流程测试员',
+    role: 'organizer',
+    roleName: '主办方活动运营人员',
+    organization: '测试主办方',
+  },
+}
+
+function onboardingState(agentIdentity: 'legal_representative' | 'authorized_agent') {
+  return {
+    organizerId: 'cypress-organizer',
+    identity: {
+      phone: '13800138000',
+      name: '流程测试员',
+      idNumber: '110101199001011234',
+      agentIdentity,
+      authorizationConfirmed: true,
+    },
+    status: 'identity_completed',
+    materials: [
+      { key: 'business_license', name: '营业执照或主体登记证明', required: true, status: 'not_uploaded' },
+      {
+        key: 'legal_representative_id_front',
+        name: '法定代表人身份证正面',
+        required: true,
+        status: 'not_uploaded',
+      },
+      {
+        key: 'legal_representative_id_back',
+        name: '法定代表人身份证反面',
+        required: true,
+        status: 'not_uploaded',
+      },
+      {
+        key: 'agent_authorization',
+        name: '经办授权书',
+        required: agentIdentity === 'authorized_agent',
+        conditional: true,
+        status: 'not_uploaded',
+      },
+      { key: 'safety_manager', name: '主体安全责任人', required: true, status: 'not_uploaded' },
+      {
+        key: 'business_permit',
+        name: '经营性业务相关许可',
+        required: false,
+        conditional: true,
+        status: 'not_uploaded',
+      },
+    ],
+  }
+}
+
+function visitOnboarding(agentIdentity: 'legal_representative' | 'authorized_agent') {
+  cy.visit('/onboarding', {
+    onBeforeLoad(win) {
+      win.localStorage.setItem('quji_session', JSON.stringify(session))
+      win.localStorage.setItem('quji_token', session.token)
+      win.localStorage.setItem('quji_onboarding_state', JSON.stringify(onboardingState(agentIdentity)))
+    },
+  })
+}
+
+describe('主办方身份材料', () => {
+  it('按正面、反面、授权书顺序完成被授权经办人材料', () => {
+    visitOnboarding('authorized_agent')
+
+    cy.contains('.completion-count', '必填完成 0 / 5')
+    cy.get('[data-cy="identity-upload-legal_representative_id_back"] button[type="button"]')
+      .contains('上传反面')
+      .should('be.disabled')
+    cy.get('[data-cy="identity-upload-agent_authorization"] button[type="button"]')
+      .contains('上传授权书')
+      .should('be.disabled')
+
+    cy.get('[data-cy="file-legal_representative_id_front"]').selectFile(
+      'public/materials/quji-public-identity-sample.webp',
+      { force: true },
+    )
+    cy.contains('.completion-count', '必填完成 1 / 5')
+    cy.contains(
+      '[data-cy="identity-upload-legal_representative_id_front"]',
+      'quji-public-identity-sample.webp',
+    )
+    cy.reload()
+    cy.contains(
+      '[data-cy="identity-upload-legal_representative_id_front"]',
+      'quji-public-identity-sample.webp',
+    )
+    cy.get('[data-cy="identity-upload-legal_representative_id_front"]').contains('查看文件').click()
+    cy.get('.drawer-preview img')
+      .should('be.visible')
+      .and(($image) => expect(($image[0] as HTMLImageElement).naturalWidth).to.be.greaterThan(0))
+    cy.get('.preview-dialog__footer').contains('关闭').click()
+    cy.get('[data-cy="identity-upload-legal_representative_id_back"] button[type="button"]')
+      .contains('上传反面')
+      .should('not.be.disabled')
+
+    cy.get('[data-cy="file-legal_representative_id_back"]').selectFile(
+      'public/materials/quji-public-identity-back-sample.webp',
+      { force: true },
+    )
+    cy.contains('.completion-count', '必填完成 2 / 5')
+    cy.get('[data-cy="identity-upload-agent_authorization"] button[type="button"]')
+      .contains('上传授权书')
+      .should('not.be.disabled')
+
+    cy.get('[data-cy="file-agent_authorization"]').selectFile(
+      'public/materials/quji-public-authorization-sample.webp',
+      { force: true },
+    )
+    cy.contains('.completion-count', '必填完成 3 / 5')
+    cy.contains('[data-cy="identity-upload-agent_authorization"]', 'quji-public-authorization-sample.webp')
+  })
+
+  it('法定代表人本人办理时不要求经办授权书', () => {
+    visitOnboarding('legal_representative')
+
+    cy.contains('.completion-count', '必填完成 0 / 4')
+    cy.contains('法定代表人本人办理 无需上传经办授权书')
+    cy.get('[data-cy="identity-upload-agent_authorization"]').should('not.exist')
+
+    cy.get('[data-cy="file-legal_representative_id_front"]').selectFile(
+      'public/materials/quji-public-identity-sample.webp',
+      { force: true },
+    )
+    cy.get('[data-cy="file-legal_representative_id_back"]').selectFile(
+      'public/materials/quji-public-identity-back-sample.webp',
+      { force: true },
+    )
+    cy.contains('.completion-count', '必填完成 2 / 4')
+    cy.get('[data-cy="identity-upload-agent_authorization"]').should('not.exist')
+  })
+})

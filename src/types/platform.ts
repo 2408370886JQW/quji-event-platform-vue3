@@ -63,7 +63,12 @@ export type OnboardingStatus =
   'not_started' | 'identity_completed' | 'materials_draft' | 'submitted' | 'changes_required' | 'approved'
 
 export type OnboardingMaterialKey =
-  'business_license' | 'agent_authorization' | 'safety_manager' | 'business_permit'
+  | 'business_license'
+  | 'legal_representative_id_front'
+  | 'legal_representative_id_back'
+  | 'agent_authorization'
+  | 'safety_manager'
+  | 'business_permit'
 
 export type OnboardingMaterialStatus =
   'not_uploaded' | 'uploaded' | 'under_review' | 'changes_required' | 'approved'

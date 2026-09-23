@@ -43,6 +43,16 @@ const identityRules: FormRules = {
   agentIdentity: [{ required: true, message: '请选择经办人身份', trigger: 'change' }],
 }
 const stepTitle = computed(() => (step.value === 0 ? '验证手机号' : '填写实名信息'))
+const identityHint = computed(() =>
+  form.agentIdentity === 'legal_representative'
+    ? '本人办理时 后续仍需上传法定代表人身份证正面和反面 无需经办授权书'
+    : '经办人办理时 后续需上传法定代表人身份证正面 反面和经办授权书',
+)
+const confirmationText = computed(() =>
+  form.agentIdentity === 'legal_representative'
+    ? '我确认由法定代表人本人办理入驻，所填信息真实有效'
+    : '我确认所填信息真实有效，并已获得主体授权办理平台入驻',
+)
 
 async function verifyPhone() {
   const valid = await verifyRef.value?.validate().catch(() => false)
@@ -54,7 +64,7 @@ async function completeRegistration() {
   const valid = await identityRef.value?.validate().catch(() => false)
   if (!valid) return
   if (!form.authorizationConfirmed) {
-    ElMessage.warning('请勾选授权与信息真实性确认')
+    ElMessage.warning('请勾选办理身份与信息真实性确认')
     return
   }
 
@@ -155,14 +165,15 @@ async function completeRegistration() {
           <el-form-item label="身份证号" prop="idNumber"
             ><el-input v-model="form.idNumber" size="large" placeholder="用于实名核验，默认脱敏展示"
           /></el-form-item>
-          <el-form-item label="经办人身份" prop="agentIdentity">
+          <el-form-item label="本次办理身份" prop="agentIdentity">
             <el-radio-group v-model="form.agentIdentity" class="identity-radios">
-              <el-radio value="legal_representative">法定代表人</el-radio>
-              <el-radio value="authorized_agent">被授权经办人</el-radio>
+              <el-radio value="legal_representative">法定代表人本人办理</el-radio>
+              <el-radio value="authorized_agent">被授权经办人办理</el-radio>
             </el-radio-group>
           </el-form-item>
+          <p class="identity-hint">{{ identityHint }}</p>
           <el-checkbox v-model="form.authorizationConfirmed" class="confirmation">
-            我确认所填信息真实有效，并已获得主体授权办理平台入驻
+            {{ confirmationText }}
           </el-checkbox>
           <div class="register-actions">
             <el-button size="large" @click="step = 0">上一步</el-button>
@@ -337,6 +348,15 @@ async function completeRegistration() {
   align-items: flex-start;
   color: var(--q-muted-strong);
   font-size: 14px;
+  line-height: 1.65;
+}
+.identity-hint {
+  margin: -8px 0 14px;
+  padding: 10px 12px;
+  border-radius: 7px;
+  background: var(--q-primary-soft);
+  color: var(--q-muted-strong);
+  font-size: 13px;
   line-height: 1.65;
 }
 .register-actions {

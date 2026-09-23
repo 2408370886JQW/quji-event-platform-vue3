@@ -2,11 +2,11 @@
 
 这是一个基于 **Vue 3、TypeScript、Pinia、Element Plus 与 Vite** 的文化活动协同后台前端。项目保留预置账号登录，同时提供主办方首次入驻、主体材料审核和审核后活动创建的可操作前端状态机。
 
-**当前正式版本：v1.3.0**
+**当前正式版本：v1.3.1**
 
 ## 从 GitHub 使用
 
-公开仓库的 `main` 分支就是当前可用的 **v1.3.0** 完整源码，开发团队可直接克隆：
+私有仓库的 `main` 分支就是当前可用的完整源码。开发团队获得 GitHub 仓库权限后可直接克隆：
 
 ```bash
 git clone https://github.com/2408370886JQW/quji-event-platform-vue3.git
@@ -34,6 +34,12 @@ pnpm test
 pnpm build
 ```
 
+启动开发服务后可另开终端执行身份材料端到端回归：
+
+```bash
+pnpm test:e2e
+```
+
 ## 验证入口与角色
 
 登录页中的预置账号为 `linjie@quji.cn` / `123456`。选择“主办方活动运营人员”可体验已有账号流程，选择“平台运营人员”可进入入驻审核；“文旅业务指导人员”仅可只读查看主体档案。
@@ -46,9 +52,9 @@ pnpm build
 
 `not_started` → `identity_completed` → `materials_draft` → `submitted` → `changes_required` / `approved`
 
-主办方可逐项上传营业执照、经办人身份证明或授权材料，直接填写安全责任人信息并生成信息表；经营性业务许可按活动性质选填。平台在 `/admissions` 查看同一份实名与材料记录，可退回补充或审核通过；审核通过后 `/activities/new` 才允许创建活动。创建向导将结果保存为 `quji_local_activity_draft`。
+主办方需分别上传营业执照、法定代表人身份证正面和反面，并直接填写安全责任人信息生成信息表。选择“被授权经办人办理”时，系统会额外显示经办授权书并纳入必填校验；选择“法定代表人本人办理”时不要求授权书。经营性业务许可按活动性质选填。平台在 `/admissions` 查看同一份实名与材料记录，可退回补充或审核通过；审核通过后 `/activities/new` 才允许创建活动。创建向导将结果保存为 `quji_local_activity_draft`。
 
-三类证照预览采用政府网站公开样例并加注“非真实证照”水印，来源和使用边界见 [`docs/PUBLIC_DOCUMENT_SOURCES.md`](docs/PUBLIC_DOCUMENT_SOURCES.md)。
+证照和授权材料预览采用政府网站或 Wikimedia Commons 的公开样例，并加注“非真实证照”水印，来源和使用边界见 [`docs/PUBLIC_DOCUMENT_SOURCES.md`](docs/PUBLIC_DOCUMENT_SOURCES.md)。
 
 未来后端替换点定义在 `src/api/onboarding.ts`，请求和响应的建议契约见 [`docs/API_CONTRACT.md`](docs/API_CONTRACT.md)。生产环境应由后端负责身份核验、文件存储、权限校验、审核审计和敏感信息脱敏，前端不应以隐藏按钮代替授权控制。
 
@@ -64,4 +70,4 @@ pnpm build
 
 ## 测试
 
-`src/stores/onboarding.test.ts` 覆盖必填材料不齐不能提交、提交进入审核、审核通过才允许创建活动，以及退回补充意见写入状态等状态机行为。
+`src/stores/onboarding.test.ts` 覆盖身份证正反面必须同时上传、经办授权书按办理身份条件必填、必填材料不齐不能提交、提交进入审核、审核通过才允许创建活动，以及退回补充意见写入状态等状态机行为。

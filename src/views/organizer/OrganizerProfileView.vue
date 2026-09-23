@@ -27,18 +27,42 @@ const materials = ref<SubjectMaterial[]>([
   },
   {
     id: 'org-2',
-    name: '法定代表人或经办授权材料',
-    group: '授权材料',
-    status: '待准备',
-    updatedAt: '—',
-    owner: '主办方',
-    note: '首次入驻请补充经办授权关系',
+    name: '法定代表人身份证正面',
+    group: '身份证明',
+    status: '已上传',
+    updatedAt: '2026-06-10 14:22',
+    owner: '林洁',
+    note: '人像面已登记 默认脱敏展示',
     preview: '/materials/quji-authorization-demo.webp',
-    previewAlt: '法定代表人或经办授权材料脱敏示意图',
-    guide: '授权书与经办人证明应相互对应 涉及身份信息时按授权范围提交',
+    previewAlt: '法定代表人身份证正面公开样例',
+    guide: '上传法定代表人身份证人像面 证件边缘 姓名和身份证号需清晰可辨',
   },
   {
     id: 'org-3',
+    name: '法定代表人身份证反面',
+    group: '身份证明',
+    status: '已上传',
+    updatedAt: '2026-06-10 14:23',
+    owner: '林洁',
+    note: '国徽面已登记 有效期清晰',
+    preview: '/materials/quji-public-identity-back-sample.webp',
+    previewAlt: '法定代表人身份证反面公开样例',
+    guide: '上传同一张身份证国徽面 签发机关和有效期限需清晰可辨',
+  },
+  {
+    id: 'org-4',
+    name: '经办授权书',
+    group: '授权材料',
+    status: '已上传',
+    updatedAt: '2026-06-10 14:25',
+    owner: '林洁',
+    note: '当前由被授权经办人办理',
+    preview: '/materials/quji-public-authorization-sample.webp',
+    previewAlt: '经办授权书公开样例',
+    guide: '仅被授权经办人办理时上传 应包含委托主体 经办人 授权事项 签署或盖章',
+  },
+  {
+    id: 'org-5',
     name: '主体安全责任人信息',
     group: '责任人',
     status: '已补正',
@@ -47,7 +71,7 @@ const materials = ref<SubjectMaterial[]>([
     note: '默认脱敏展示 访问全程留痕',
   },
   {
-    id: 'org-4',
+    id: 'org-6',
     name: '经营性业务相关许可',
     group: '相关资质',
     status: '待准备',
@@ -111,8 +135,8 @@ function save() {
           <p class="q-panel__desc">主体材料可被多场活动引用，提交后按活动形成独立版本快照。</p>
         </div>
         <div class="profile-stats">
-          <span>材料准备 <b>2 / 4</b></span
-          ><span>待补充 <b>2 项</b></span>
+          <span>必填完成 <b>5 / 5</b></span
+          ><span>选填材料 <b>1 项</b></span>
         </div>
       </div>
       <div class="q-panel__body">
@@ -162,7 +186,10 @@ function save() {
     <section class="workflow-cards">
       <article>
         <h3>首次提交</h3>
-        <p><span>上传主体证明 授权材料和安全责任人信息</span><span>完成后形成首个主体版本</span></p>
+        <p>
+          <span>上传主体证明 法定代表人身份证正反面和安全责任人信息</span>
+          <span>经办人办理时再补充授权书 完成后形成首个主体版本</span>
+        </p>
       </article>
       <article>
         <h3>多人协作</h3>

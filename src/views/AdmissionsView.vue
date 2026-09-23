@@ -11,6 +11,30 @@ const changesComment = ref('')
 const previewDialog = ref(false)
 const selectedMaterial = ref<OnboardingMaterial | null>(null)
 const canReview = computed(() => onboarding.state.status === 'submitted')
+const sampleAssets: Partial<Record<OnboardingMaterial['key'], string>> = {
+  business_license: '/materials/quji-public-license-sample.webp',
+  legal_representative_id_front: '/materials/quji-public-identity-sample.webp',
+  legal_representative_id_back: '/materials/quji-public-identity-back-sample.webp',
+  agent_authorization: '/materials/quji-public-authorization-sample.webp',
+  business_permit: '/materials/quji-public-permit-sample.webp',
+}
+const selectedPreviewUrl = computed(() => {
+  if (!selectedMaterial.value) return undefined
+  return selectedMaterial.value.previewUrl || sampleAssets[selectedMaterial.value.key]
+})
+const selectedPreviewUsesSample = computed(
+  () =>
+    Boolean(selectedMaterial.value) &&
+    (selectedMaterial.value?.source === 'sample' || !selectedMaterial.value?.previewUrl),
+)
+const visibleMaterials = computed(() =>
+  onboarding.state.materials.filter(
+    (material) =>
+      material.key !== 'agent_authorization' ||
+      onboarding.state.identity?.agentIdentity === 'authorized_agent' ||
+      Boolean(material.fileName),
+  ),
+)
 const statusLabels: Record<OnboardingStatus, string> = {
   not_started: '尚未开始',
   identity_completed: '实名信息已完成',
@@ -28,6 +52,11 @@ function materialStatus(status: OnboardingMaterial['status']) {
     changes_required: '需补充',
     approved: '已通过',
   }[status]
+}
+function materialCondition(row: unknown) {
+  const material = row as OnboardingMaterial
+  if (material.key === 'agent_authorization') return '经办人必填'
+  return material.conditional ? '如适用' : ''
 }
 function viewMaterial(row: unknown) {
   const material = row as OnboardingMaterial
@@ -96,9 +125,11 @@ function requestChanges() {
           >
         </div>
         <div>
-          <span>身份</span
+          <span>办理身份</span
           ><strong>{{
-            onboarding.state.identity.agentIdentity === 'legal_representative' ? '法定代表人' : '被授权经办人'
+            onboarding.state.identity.agentIdentity === 'legal_representative'
+              ? '法定代表人本人办理'
+              : '被授权经办人办理'
           }}</strong>
         </div>
       </div>
@@ -114,16 +145,16 @@ function requestChanges() {
       <div class="q-panel__header">
         <div>
           <h2 class="q-panel__title">提交材料</h2>
-          <p class="q-panel__desc">点击“查看文件”可检视图片预览或文件详情。</p>
+          <p class="q-panel__desc">法定代表人身份证正面和反面分别核验 经办人办理时同步核验授权书。</p>
         </div>
       </div>
       <div class="q-table-wrap">
-        <el-table :data="onboarding.state.materials" style="min-width: 930px">
+        <el-table :data="visibleMaterials" style="min-width: 930px">
           <el-table-column label="材料名称" min-width="220"
             ><template #default="{ row }"
               ><div class="material-title">
                 <strong>{{ row.name }}</strong
-                ><span v-if="row.conditional" class="conditional">如适用</span>
+                ><span v-if="materialCondition(row)" class="conditional">{{ materialCondition(row) }}</span>
               </div></template
             ></el-table-column
           >
@@ -197,9 +228,9 @@ function requestChanges() {
       :title="selectedMaterial ? `材料预览：${selectedMaterial.name}` : '材料预览'"
       width="680px"
       ><section v-if="selectedMaterial" class="file-preview">
-        <div v-if="selectedMaterial.isImage && selectedMaterial.previewUrl" class="sample-preview-visual">
-          <img :src="selectedMaterial.previewUrl" :alt="`${selectedMaterial.name}预览`" />
-          <span v-if="selectedMaterial.source === 'sample'">趣集公开样例 · 非真实证照</span>
+        <div v-if="selectedMaterial.isImage && selectedPreviewUrl" class="sample-preview-visual">
+          <img :src="selectedPreviewUrl" :alt="`${selectedMaterial.name}预览`" />
+          <span v-if="selectedPreviewUsesSample">趣集公开样例 · 非真实证照</span>
         </div>
         <div v-else class="file-detail">
           <FileText :size="28" /><strong>{{ selectedMaterial.fileName }}</strong
