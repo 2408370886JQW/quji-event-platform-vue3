@@ -1,6 +1,7 @@
 import { computed, ref } from 'vue'
 import { defineStore } from 'pinia'
 import type {
+  BusinessLicenseRecognition,
   OnboardingMaterial,
   OnboardingMaterialInput,
   OnboardingMaterialKey,
@@ -9,9 +10,9 @@ import type {
 } from '@/types/platform'
 
 /**
- * Front-end state adapter only. It intentionally persists a reviewable local
- * workflow to localStorage while no onboarding backend is connected. Replace
- * these transitions with calls from src/api/onboarding.ts when the API exists.
+ * Front-end state adapter only. It persists a reviewable local workflow while no
+ * onboarding backend is connected. Replace these transitions with calls from
+ * src/api/onboarding.ts when the API exists.
  */
 export const ONBOARDING_STORAGE_KEY = 'quji_onboarding_state'
 
@@ -80,6 +81,18 @@ export const createApprovedOnboardingState = (): OnboardingState => {
       agentIdentity: 'authorized_agent',
       authorizationConfirmed: true,
     },
+    subjectProfile: {
+      organizationName: '新疆星河文化传媒有限公司',
+      unifiedSocialCreditCode: '91650100MA7QJ2026X',
+      legalRepresentativeName: '穆合塔尔·阿不都热依木',
+      establishedAt: '2021-05-18',
+      businessTerm: '2021-05-18 至长期',
+      registeredAddress: '新疆乌鲁木齐市水磨沟区会展大道 88 号',
+      confidence: 0.98,
+      recognizedAt: '2026-06-10 10:18',
+      source: 'license_recognition',
+      confirmed: true,
+    },
     status: 'approved',
     submittedAt: '2026-06-10T10:20:00.000Z',
     reviewedAt: '2026-06-11T16:30:00.000Z',
@@ -135,6 +148,8 @@ export const createApprovedOnboardingState = (): OnboardingState => {
     fileSize: 78590,
     source: 'sample' as const,
     status: 'approved' as const,
+    reviewedBy: '周可',
+    reviewedAt: '2026-06-11T16:30:00.000Z',
     updatedAt: '2026-06-11 16:30',
   }))
   return state
@@ -157,7 +172,6 @@ function mergeSavedMaterials(saved: Partial<OnboardingState>): OnboardingMateria
     const isLegacyIdentitySide =
       material.key === 'legal_representative_id_front' || material.key === 'legal_representative_id_back'
     if (!legacyAuthorization || !isLegacyIdentitySide) return material
-
     if (material.key === 'legal_representative_id_back' && saved.status !== 'approved') return material
 
     return {
@@ -194,6 +208,20 @@ function readState(): OnboardingState {
         : undefined,
       materials: mergeSavedMaterials(saved),
     }
+    if (!state.subjectProfile && state.status === 'approved' && state.identity) {
+      state.subjectProfile = {
+        organizationName: state.identity.organizationName,
+        unifiedSocialCreditCode: '待后端同步',
+        legalRepresentativeName: state.identity.name,
+        establishedAt: '待后端同步',
+        businessTerm: '待后端同步',
+        registeredAddress: '待后端同步',
+        confidence: 1,
+        recognizedAt: state.reviewedAt || '',
+        source: 'manual',
+        confirmed: true,
+      }
+    }
     applyMaterialRequirements(state)
     return state
   } catch {
@@ -210,12 +238,23 @@ export const useOnboardingStore = defineStore('onboarding', () => {
   const requiredMaterials = computed(() => state.value.materials.filter((material) => material.required))
   const requiredMaterialCount = computed(() => requiredMaterials.value.length)
   const preparedRequiredCount = computed(() => requiredMaterials.value.filter(isMaterialPrepared).length)
+  const reviewedRequiredCount = computed(
+    () => requiredMaterials.value.filter((material) => material.status === 'approved').length,
+  )
   const requiredMaterialsComplete = computed(
     () => requiredMaterials.value.length > 0 && requiredMaterials.value.every(isMaterialPrepared),
+  )
+  const canFinalizeReview = computed(
+    () =>
+      state.value.status === 'submitted' &&
+      requiredMaterials.value.length > 0 &&
+      requiredMaterials.value.every((material) => material.status === 'approved') &&
+      state.value.materials.every((material) => material.status !== 'under_review'),
   )
   const canSubmit = computed(
     () =>
       Boolean(state.value.identity) &&
+      Boolean(state.value.subjectProfile?.confirmed) &&
       requiredMaterialsComplete.value &&
       ['materials_draft', 'changes_required'].includes(state.value.status),
   )
@@ -255,12 +294,55 @@ export const useOnboardingStore = defineStore('onboarding', () => {
       ...input,
       status: 'uploaded',
       reviewComment: undefined,
+      reviewedBy: undefined,
+      reviewedAt: undefined,
       updatedAt: new Date().toLocaleString('zh-CN', { hour12: false }),
     })
     if (state.value.status !== 'approved' && state.value.status !== 'submitted') {
       state.value.status = 'materials_draft'
       state.value.reviewComment = undefined
     }
+    persist()
+  }
+
+  function uploadBusinessLicense(input: OnboardingMaterialInput, recognition: BusinessLicenseRecognition) {
+    uploadMaterial('business_license', input)
+    state.value.subjectProfile = {
+      ...recognition,
+      source: 'license_recognition',
+      confirmed: true,
+    }
+    if (state.value.identity) state.value.identity.organizationName = recognition.organizationName
+    persist()
+  }
+
+  function updateSubjectProfile(patch: Partial<BusinessLicenseRecognition>) {
+    if (!state.value.subjectProfile) throw new Error('请先上传营业执照并完成信息识别')
+    state.value.subjectProfile = {
+      ...state.value.subjectProfile,
+      ...patch,
+      source: 'manual',
+      confirmed: false,
+    }
+    if (state.value.identity && patch.organizationName) {
+      state.value.identity.organizationName = patch.organizationName
+    }
+    persist()
+  }
+
+  function confirmSubjectProfile() {
+    const profile = state.value.subjectProfile
+    if (!profile) throw new Error('请先上传营业执照并完成信息识别')
+    if (
+      !profile.organizationName.trim() ||
+      !profile.unifiedSocialCreditCode.trim() ||
+      !profile.legalRepresentativeName.trim() ||
+      !profile.registeredAddress.trim()
+    ) {
+      throw new Error('请确认营业执照识别信息完整')
+    }
+    profile.confirmed = true
+    if (state.value.identity) state.value.identity.organizationName = profile.organizationName
     persist()
   }
 
@@ -292,18 +374,41 @@ export const useOnboardingStore = defineStore('onboarding', () => {
     persist()
   }
 
-  function approve() {
-    if (state.value.status !== 'submitted') throw new Error('仅已提交的入驻申请可以审核通过')
+  function reviewMaterial(key: OnboardingMaterialKey, action: 'approve' | 'request_changes', comment = '') {
+    if (state.value.status !== 'submitted') throw new Error('仅待平台审核的材料可以逐项处理')
+    const material = state.value.materials.find((item) => item.key === key)
+    if (!material?.fileName || material.status !== 'under_review') throw new Error('当前材料暂不可审核')
+
+    const reviewedAt = new Date().toISOString()
+    if (action === 'request_changes') {
+      const cleanComment = comment.trim()
+      if (!cleanComment) throw new Error('请填写该材料的退回补充意见')
+      material.status = 'changes_required'
+      material.reviewComment = cleanComment
+      material.reviewedBy = '周可'
+      material.reviewedAt = reviewedAt
+      state.value.status = 'changes_required'
+      state.value.reviewComment = `${material.name}：${cleanComment}`
+      state.value.reviewedAt = reviewedAt
+    } else {
+      material.status = 'approved'
+      material.reviewComment = undefined
+      material.reviewedBy = '周可'
+      material.reviewedAt = reviewedAt
+    }
+    persist()
+  }
+
+  function finalizeReview() {
+    if (!canFinalizeReview.value) throw new Error('请先完成全部必填材料的逐项审核')
     state.value.status = 'approved'
     state.value.reviewedAt = new Date().toISOString()
     state.value.reviewComment = undefined
-    state.value.materials.forEach((material) => {
-      if (material.status === 'under_review') {
-        material.status = 'approved'
-        material.reviewComment = undefined
-      }
-    })
     persist()
+  }
+
+  function approve() {
+    finalizeReview()
   }
 
   function reset() {
@@ -321,13 +426,20 @@ export const useOnboardingStore = defineStore('onboarding', () => {
     state,
     requiredMaterialCount,
     preparedRequiredCount,
+    reviewedRequiredCount,
     requiredMaterialsComplete,
+    canFinalizeReview,
     canSubmit,
     canCreateActivity,
     setIdentity,
     setAgentIdentity,
     uploadMaterial,
+    uploadBusinessLicense,
+    updateSubjectProfile,
+    confirmSubjectProfile,
     submitForReview,
+    reviewMaterial,
+    finalizeReview,
     requestChanges,
     approve,
     reset,

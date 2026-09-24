@@ -75,7 +75,7 @@ const router = createRouter({
           path: 'costumes',
           name: 'costumes',
           component: () => import('@/views/CostumePropsView.vue'),
-          meta: { roles: ['platform', 'organizer', 'onsite'] },
+          meta: { roles: ['platform', 'organizer'] },
         },
         {
           path: 'onsite',

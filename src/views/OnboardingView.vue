@@ -11,13 +11,21 @@ import {
   FileCheck2,
   FileText,
   IdCard,
+  LoaderCircle,
   Plus,
+  ScanText,
   Send,
   ShieldCheck,
   Upload,
 } from '@lucide/vue'
+import { onboardingApi } from '@/api/onboarding'
 import { useOnboardingStore } from '@/stores/onboarding'
-import type { OnboardingMaterial, OnboardingMaterialKey, OnboardingStatus } from '@/types/platform'
+import type {
+  BusinessLicenseRecognition,
+  OnboardingMaterial,
+  OnboardingMaterialKey,
+  OnboardingStatus,
+} from '@/types/platform'
 
 const router = useRouter()
 const route = useRoute()
@@ -25,6 +33,7 @@ const onboarding = useOnboardingStore()
 const previewDialog = ref(false)
 const selectedMaterial = ref<OnboardingMaterial | null>(null)
 const materialsPanel = ref<HTMLElement>()
+const licenseRecognizing = ref(false)
 const safetyForm = reactive({
   name: '',
   phone: '',
@@ -122,11 +131,16 @@ const isEditable = computed(
 const applicantIdentity = computed(() => onboarding.state.identity?.agentIdentity)
 const identityMaterials = computed(() => {
   const keys: OnboardingMaterialKey[] = ['legal_representative_id_front', 'legal_representative_id_back']
-  if (applicantIdentity.value === 'authorized_agent') keys.push('agent_authorization')
   return keys
     .map((key) => onboarding.state.materials.find((item) => item.key === key))
     .filter((item): item is OnboardingMaterial => Boolean(item))
 })
+const authorizationMaterial = computed(() =>
+  onboarding.state.materials.find((item) => item.key === 'agent_authorization'),
+)
+const completedIdentitySides = computed(
+  () => identityMaterials.value.filter((material) => Boolean(material.fileName)).length,
+)
 const standaloneMaterials = computed(() =>
   onboarding.state.materials.filter((item) =>
     ['business_license', 'safety_manager', 'business_permit'].includes(item.key),
@@ -148,15 +162,14 @@ const identityBackReady = computed(() =>
 )
 
 function canChooseIdentityMaterial(key: OnboardingMaterialKey) {
-  if (key === 'legal_representative_id_back') return identityFrontReady.value
   if (key === 'agent_authorization') return identityFrontReady.value && identityBackReady.value
   return true
 }
 
 function identityStepNote(key: OnboardingMaterialKey) {
-  if (key === 'legal_representative_id_front') return '第一步 先上传人像面'
-  if (key === 'legal_representative_id_back') return '第二步 再上传国徽面'
-  return '第三步 经办人补充授权书'
+  if (key === 'legal_representative_id_front') return '人像面'
+  if (key === 'legal_representative_id_back') return '国徽面'
+  return '经办人补充授权书'
 }
 
 function uploadActionLabel(material: OnboardingMaterial) {
@@ -231,32 +244,79 @@ async function handleFileChange(key: OnboardingMaterialKey, event: Event) {
       ElMessage.warning('文件已保存 但图片预览生成失败')
     }
   }
-  onboarding.uploadMaterial(key, {
+  const materialInput = {
     fileName: file.name,
     fileType: file.type,
     fileSize: file.size,
     previewUrl,
     isImage,
-    source: 'upload',
-  })
+    source: 'upload' as const,
+  }
+  if (key === 'business_license') {
+    licenseRecognizing.value = true
+    try {
+      const recognition = await onboardingApi.recognizeBusinessLicense(
+        file,
+        onboarding.state.identity?.organizationName,
+      )
+      onboarding.uploadBusinessLicense(materialInput, recognition)
+      ElMessage.success('营业执照已上传 主体信息已自动关联')
+    } catch {
+      onboarding.uploadMaterial(key, materialInput)
+      ElMessage.warning('营业执照已保存 自动读取失败 请稍后重试')
+    } finally {
+      licenseRecognizing.value = false
+    }
+  } else {
+    onboarding.uploadMaterial(key, materialInput)
+    ElMessage.success(`${materialGuides[key].title}已保存`)
+  }
   input.value = ''
-  ElMessage.success(`${materialGuides[key].title}已保存`)
 }
 
-function useSample(material: OnboardingMaterial) {
+async function useSample(material: OnboardingMaterial) {
   const previewUrl = sampleAssets[material.key]
   if (!previewUrl) {
     ElMessage.info('该材料请填写安全责任人信息后保存')
     return
   }
-  onboarding.uploadMaterial(material.key, {
+  const materialInput = {
     fileName: `${materialTitle(material)}（公开样例）.webp`,
     fileType: 'image/webp',
     previewUrl,
     isImage: true,
-    source: 'sample',
-  })
-  ElMessage.success('已使用公开样例，可继续提交审核')
+    source: 'sample' as const,
+  }
+  if (material.key === 'business_license') {
+    licenseRecognizing.value = true
+    const sampleFile = new File([], 'business-license-sample.webp', { type: 'image/webp' })
+    try {
+      const recognition = await onboardingApi.recognizeBusinessLicense(
+        sampleFile,
+        onboarding.state.identity?.organizationName,
+      )
+      onboarding.uploadBusinessLicense(materialInput, recognition)
+      ElMessage.success('营业执照样例已载入 主体信息已自动关联')
+    } finally {
+      licenseRecognizing.value = false
+    }
+  } else {
+    onboarding.uploadMaterial(material.key, materialInput)
+    ElMessage.success('已使用公开样例 可继续提交审核')
+  }
+}
+
+function updateSubjectField(key: keyof BusinessLicenseRecognition, value: string | number) {
+  onboarding.updateSubjectProfile({ [key]: value } as Partial<BusinessLicenseRecognition>)
+}
+
+function confirmSubjectProfile() {
+  try {
+    onboarding.confirmSubjectProfile()
+    ElMessage.success('主体信息已保存并关联当前账号')
+  } catch (error) {
+    ElMessage.warning(error instanceof Error ? error.message : '请检查主体信息')
+  }
 }
 
 function saveSafetyManager() {
@@ -420,8 +480,8 @@ onMounted(async () => {
           <div class="identity-material-group__header">
             <div>
               <span class="group-index"><IdCard :size="17" />身份材料</span>
-              <h3>法定代表人身份证与经办授权材料</h3>
-              <p>办理身份已在注册时确认 请按顺序上传对应文件</p>
+              <h3>法定代表人身份证</h3>
+              <p>正面和反面放在同一张材料卡内 分别选择文件即可</p>
             </div>
             <span class="group-status">{{ identityModeSummary }}</span>
           </div>
@@ -436,70 +496,122 @@ onMounted(async () => {
             </span>
           </div>
 
-          <div class="identity-upload-grid">
-            <section
-              v-for="(material, index) in identityMaterials"
-              :key="material.key"
-              class="identity-upload-card"
-              :class="{
-                'is-uploaded': material.fileName,
-                'is-locked': !canChooseIdentityMaterial(material.key),
-              }"
-              :data-cy="`identity-upload-${material.key}`"
-            >
-              <div class="identity-upload-card__top">
-                <span class="upload-order">0{{ index + 1 }}</span>
-                <span class="material-state" :class="`material-state--${material.status}`">
-                  {{ materialLabel(material.status) }}
-                </span>
+          <section class="identity-document-card" aria-label="法定代表人身份证正反面">
+            <div class="identity-document-card__header">
+              <div>
+                <strong>身份证正反面</strong>
+                <span>两个上传位属于同一份身份证材料</span>
               </div>
-              <div class="identity-upload-card__heading">
-                <IdCard v-if="material.key !== 'agent_authorization'" :size="20" />
-                <FileSignature v-else :size="20" />
-                <div>
-                  <h4>{{ materialTitle(material) }}</h4>
-                  <span>{{ identityStepNote(material.key) }}</span>
+              <span class="identity-document-card__count">已完成 {{ completedIdentitySides }} / 2</span>
+            </div>
+            <div class="identity-upload-grid">
+              <section
+                v-for="material in identityMaterials"
+                :key="material.key"
+                class="identity-upload-card"
+                :class="{ 'is-uploaded': material.fileName }"
+                :data-cy="`identity-upload-${material.key}`"
+              >
+                <div class="identity-upload-card__top">
+                  <span class="upload-order">{{ identityStepNote(material.key) }}</span>
+                  <span class="material-state" :class="`material-state--${material.status}`">
+                    {{ materialLabel(material.status) }}
+                  </span>
                 </div>
-              </div>
-              <p class="material-card__copy">
-                <span v-for="line in materialLines(material)" :key="line">{{ line }}</span>
-              </p>
-              <div v-if="material.fileName" class="uploaded-file">
-                <FileCheck2 :size="20" />
-                <div>
-                  <strong>{{ material.fileName }}</strong>
-                  <span>{{ material.updatedAt || '本地文件已保存' }}</span>
+                <div class="identity-upload-card__heading">
+                  <IdCard :size="20" />
+                  <div>
+                    <h4>{{ materialTitle(material) }}</h4>
+                    <span>{{ materialLines(material)[0] }}</span>
+                  </div>
                 </div>
+                <div v-if="material.fileName" class="uploaded-file">
+                  <FileCheck2 :size="20" />
+                  <div>
+                    <strong>{{ material.fileName }}</strong>
+                    <span>{{ material.updatedAt || '本地文件已保存' }}</span>
+                  </div>
+                </div>
+                <div class="material-card__actions">
+                  <el-button plain @click="openMaterial(material)">
+                    <Eye :size="16" />{{ material.fileName ? '查看' : '查看要求' }}
+                  </el-button>
+                  <el-button v-if="isEditable" type="primary" @click="fileInput(material.key)">
+                    <Upload :size="16" />{{ uploadActionLabel(material) }}
+                  </el-button>
+                </div>
+                <input
+                  class="native-file-input"
+                  type="file"
+                  accept="image/*,.pdf"
+                  :data-material-key="material.key"
+                  :data-cy="`file-${material.key}`"
+                  @change="handleFileChange(material.key, $event)"
+                />
+                <p v-if="material.reviewComment" class="review-comment">
+                  <strong>审核意见：</strong>{{ material.reviewComment }}
+                </p>
+              </section>
+            </div>
+          </section>
+
+          <section
+            v-if="applicantIdentity === 'authorized_agent' && authorizationMaterial"
+            class="identity-upload-card authorization-upload-card"
+            :class="{
+              'is-uploaded': authorizationMaterial.fileName,
+              'is-locked': !canChooseIdentityMaterial(authorizationMaterial.key),
+            }"
+            data-cy="identity-upload-agent_authorization"
+          >
+            <div class="identity-upload-card__top">
+              <span class="upload-order"><FileSignature :size="16" />经办授权材料</span>
+              <span class="material-state" :class="`material-state--${authorizationMaterial.status}`">
+                {{ materialLabel(authorizationMaterial.status) }}
+              </span>
+            </div>
+            <div class="identity-upload-card__heading">
+              <FileSignature :size="20" />
+              <div>
+                <h4>{{ materialTitle(authorizationMaterial) }}</h4>
+                <span>身份证正反面上传后 再补充授权书</span>
               </div>
-              <p v-else-if="!canChooseIdentityMaterial(material.key)" class="sequence-tip">
-                请先完成上一项材料
-              </p>
-              <div class="material-card__actions">
-                <el-button plain @click="openMaterial(material)">
-                  <Eye :size="16" />{{ material.fileName ? '查看文件' : '查看要求' }}
-                </el-button>
-                <el-button
-                  v-if="isEditable"
-                  type="primary"
-                  :disabled="!canChooseIdentityMaterial(material.key)"
-                  @click="fileInput(material.key)"
-                >
-                  <Upload :size="16" />{{ uploadActionLabel(material) }}
-                </el-button>
+            </div>
+            <div v-if="authorizationMaterial.fileName" class="uploaded-file">
+              <FileCheck2 :size="20" />
+              <div>
+                <strong>{{ authorizationMaterial.fileName }}</strong>
+                <span>{{ authorizationMaterial.updatedAt || '本地文件已保存' }}</span>
               </div>
-              <input
-                class="native-file-input"
-                type="file"
-                accept="image/*,.pdf"
-                :data-material-key="material.key"
-                :data-cy="`file-${material.key}`"
-                @change="handleFileChange(material.key, $event)"
-              />
-              <p v-if="material.reviewComment" class="review-comment">
-                <strong>审核意见：</strong>{{ material.reviewComment }}
-              </p>
-            </section>
-          </div>
+            </div>
+            <p v-else-if="!canChooseIdentityMaterial(authorizationMaterial.key)" class="sequence-tip">
+              请先在上方完成身份证正反面
+            </p>
+            <div class="material-card__actions">
+              <el-button plain @click="openMaterial(authorizationMaterial)">
+                <Eye :size="16" />{{ authorizationMaterial.fileName ? '查看文件' : '查看要求' }}
+              </el-button>
+              <el-button
+                v-if="isEditable"
+                type="primary"
+                :disabled="!canChooseIdentityMaterial(authorizationMaterial.key)"
+                @click="fileInput(authorizationMaterial.key)"
+              >
+                <Upload :size="16" />{{ uploadActionLabel(authorizationMaterial) }}
+              </el-button>
+            </div>
+            <input
+              class="native-file-input"
+              type="file"
+              accept="image/*,.pdf"
+              data-material-key="agent_authorization"
+              data-cy="file-agent_authorization"
+              @change="handleFileChange('agent_authorization', $event)"
+            />
+            <p v-if="authorizationMaterial.reviewComment" class="review-comment">
+              <strong>审核意见：</strong>{{ authorizationMaterial.reviewComment }}
+            </p>
+          </section>
         </article>
 
         <div class="material-grid">
@@ -507,7 +619,10 @@ onMounted(async () => {
             v-for="material in standaloneMaterials"
             :key="material.key"
             class="onboarding-material-card"
-            :class="{ 'is-uploaded': material.fileName }"
+            :class="{
+              'is-uploaded': material.fileName,
+              'is-license-card': material.key === 'business_license',
+            }"
           >
             <div class="material-card__top">
               <div class="material-card__heading">
@@ -535,6 +650,96 @@ onMounted(async () => {
                 }}</span>
               </div>
             </div>
+
+            <div
+              v-if="material.key === 'business_license' && licenseRecognizing"
+              class="license-recognition-state"
+              aria-live="polite"
+            >
+              <LoaderCircle :size="18" />
+              <div><strong>正在读取营业执照</strong><span>主体信息识别完成后会自动填入下方</span></div>
+            </div>
+
+            <section
+              v-if="material.key === 'business_license' && onboarding.state.subjectProfile"
+              class="subject-profile"
+              data-cy="subject-profile"
+            >
+              <header class="subject-profile__header">
+                <div>
+                  <span><ScanText :size="16" />营业执照信息已自动关联</span>
+                  <strong>无需再次逐项录入 请核对后直接继续</strong>
+                </div>
+                <span class="recognition-confidence"
+                  >识别度 {{ Math.round(onboarding.state.subjectProfile.confidence * 100) }}%</span
+                >
+              </header>
+              <div class="subject-profile__grid">
+                <label>
+                  <span>主体名称</span>
+                  <el-input
+                    :model-value="onboarding.state.subjectProfile.organizationName"
+                    :disabled="!isEditable"
+                    @update:model-value="updateSubjectField('organizationName', $event)"
+                  />
+                </label>
+                <label>
+                  <span>统一社会信用代码</span>
+                  <el-input
+                    :model-value="onboarding.state.subjectProfile.unifiedSocialCreditCode"
+                    :disabled="!isEditable"
+                    @update:model-value="updateSubjectField('unifiedSocialCreditCode', $event)"
+                  />
+                </label>
+                <label>
+                  <span>法定代表人</span>
+                  <el-input
+                    :model-value="onboarding.state.subjectProfile.legalRepresentativeName"
+                    :disabled="!isEditable"
+                    @update:model-value="updateSubjectField('legalRepresentativeName', $event)"
+                  />
+                </label>
+                <label>
+                  <span>成立日期</span>
+                  <el-input
+                    :model-value="onboarding.state.subjectProfile.establishedAt"
+                    :disabled="!isEditable"
+                    @update:model-value="updateSubjectField('establishedAt', $event)"
+                  />
+                </label>
+                <label>
+                  <span>营业期限</span>
+                  <el-input
+                    :model-value="onboarding.state.subjectProfile.businessTerm"
+                    :disabled="!isEditable"
+                    @update:model-value="updateSubjectField('businessTerm', $event)"
+                  />
+                </label>
+                <label class="subject-profile__address">
+                  <span>登记住所</span>
+                  <el-input
+                    :model-value="onboarding.state.subjectProfile.registeredAddress"
+                    :disabled="!isEditable"
+                    @update:model-value="updateSubjectField('registeredAddress', $event)"
+                  />
+                </label>
+              </div>
+              <footer v-if="isEditable" class="subject-profile__footer">
+                <span>
+                  {{
+                    onboarding.state.subjectProfile.confirmed
+                      ? '系统已自动关联到主办方主体档案'
+                      : '信息有修改 请保存后继续'
+                  }}
+                </span>
+                <el-button
+                  v-if="!onboarding.state.subjectProfile.confirmed"
+                  type="primary"
+                  @click="confirmSubjectProfile"
+                  >保存主体信息</el-button
+                >
+              </footer>
+            </section>
 
             <div v-if="material.key === 'safety_manager' && isEditable" class="safety-form">
               <label>
@@ -570,8 +775,15 @@ onMounted(async () => {
               >
                 保存责任人信息
               </el-button>
-              <el-button v-else-if="isEditable" type="primary" @click="fileInput(material.key)">
-                <Upload :size="16" />{{ uploadActionLabel(material) }}
+              <el-button
+                v-else-if="isEditable"
+                type="primary"
+                :loading="material.key === 'business_license' && licenseRecognizing"
+                @click="fileInput(material.key)"
+              >
+                <Upload v-if="material.key !== 'business_license'" :size="16" />
+                <ScanText v-else :size="16" />
+                {{ material.key === 'business_license' ? '一键上传并识别' : uploadActionLabel(material) }}
               </el-button>
             </div>
             <input
@@ -1011,9 +1223,48 @@ onMounted(async () => {
 
 .identity-upload-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
-  gap: 12px;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.identity-document-card {
+  overflow: hidden;
   margin-top: 14px;
+  border: 1px solid #cbd5e1;
+  border-radius: 8px;
+  background: #fff;
+}
+
+.identity-document-card__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 13px 15px;
+  border-bottom: 1px solid #e2e8f0;
+  background: #f8fafc;
+}
+
+.identity-document-card__header > div {
+  display: grid;
+  gap: 3px;
+}
+
+.identity-document-card__header strong {
+  color: #18212f;
+  font-size: 15px;
+}
+
+.identity-document-card__header span {
+  color: #64748b;
+  font-size: 13px;
+  line-height: 1.5;
+}
+
+.identity-document-card__count {
+  flex: none;
+  color: #1d4ed8 !important;
+  font-weight: 700;
+  white-space: nowrap;
 }
 
 .identity-upload-card {
@@ -1039,6 +1290,20 @@ onMounted(async () => {
 
 .identity-upload-card.is-locked {
   background: #f8fafc;
+}
+
+.identity-document-card .identity-upload-card {
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+}
+
+.identity-document-card .identity-upload-card:first-child {
+  border-right: 1px solid #e2e8f0;
+}
+
+.authorization-upload-card {
+  margin-top: 14px;
 }
 
 .identity-upload-card__top {
@@ -1135,6 +1400,124 @@ onMounted(async () => {
 
 .onboarding-material-card.is-uploaded {
   border-color: #cbd5e1;
+}
+
+.onboarding-material-card.is-license-card {
+  grid-column: 1 / -1;
+}
+
+.license-recognition-state {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-top: 14px;
+  padding: 13px;
+  border: 1px solid #bfdbfe;
+  border-radius: 7px;
+  background: #eff6ff;
+}
+
+.license-recognition-state > svg {
+  flex: none;
+  color: #245fc4;
+  animation: recognition-spin 900ms linear infinite;
+}
+
+.license-recognition-state > div {
+  display: grid;
+  gap: 3px;
+}
+
+.license-recognition-state strong,
+.license-recognition-state span {
+  font-size: 13px;
+}
+
+.license-recognition-state span {
+  color: #64748b;
+}
+
+@keyframes recognition-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.subject-profile {
+  margin-top: 14px;
+  padding: 15px;
+  border: 1px solid #bfdbfe;
+  border-radius: 8px;
+  background: #f8fbff;
+}
+
+.subject-profile__header,
+.subject-profile__footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.subject-profile__header > div {
+  display: grid;
+  gap: 4px;
+}
+
+.subject-profile__header > div > span {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  color: #1d4ed8;
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.subject-profile__header strong {
+  color: #18212f;
+  font-size: 15px;
+}
+
+.recognition-confidence {
+  flex: none;
+  padding: 4px 8px;
+  border-radius: 4px;
+  background: #dbeafe;
+  color: #1d4ed8;
+  font-size: 12px;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.subject-profile__grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px;
+  margin-top: 14px;
+}
+
+.subject-profile__grid label {
+  display: grid;
+  min-width: 0;
+  gap: 6px;
+}
+
+.subject-profile__grid label > span {
+  color: #475569;
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.subject-profile__address {
+  grid-column: span 2;
+}
+
+.subject-profile__footer {
+  margin-top: 14px;
+  padding-top: 12px;
+  border-top: 1px solid #dbeafe;
+  color: #475569;
+  font-size: 13px;
 }
 
 .material-card__top {
@@ -1429,8 +1812,13 @@ onMounted(async () => {
 @media (max-width: 850px) {
   .identity-grid,
   .material-grid,
-  .file-preview-detail__meta {
+  .file-preview-detail__meta,
+  .subject-profile__grid {
     grid-template-columns: 1fr;
+  }
+
+  .subject-profile__address {
+    grid-column: auto;
   }
 
   .identity-grid {
@@ -1469,6 +1857,23 @@ onMounted(async () => {
 
   .identity-upload-grid {
     grid-template-columns: 1fr;
+  }
+
+  .identity-document-card .identity-upload-card:first-child {
+    border-right: 0;
+    border-bottom: 1px solid #e2e8f0;
+  }
+
+  .identity-document-card__header,
+  .subject-profile__header,
+  .subject-profile__footer {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .identity-document-card__count,
+  .recognition-confidence {
+    align-self: flex-start;
   }
 
   .safety-form {

@@ -87,7 +87,7 @@ describe('首次入驻身份选择', () => {
     cy.contains('法定代表人姓名')
     cy.get('input[placeholder="请输入本人真实姓名"]').type('张明')
     cy.get('input[placeholder="用于本人实名核验 默认脱敏展示"]').type('650102199001011234')
-    cy.get('input[placeholder="请输入营业执照上的主体名称"]').type('新疆新潮文化活动有限公司')
+    cy.contains('上传营业执照后将自动读取并关联')
     cy.get('.confirmation input[type="checkbox"]').check()
     cy.contains('button', '保存并上传材料').click()
 
@@ -99,13 +99,13 @@ describe('首次入驻身份选择', () => {
 })
 
 describe('主办方身份材料', () => {
-  it('按正面、反面、授权书顺序完成被授权经办人材料', () => {
+  it('在同一张身份证材料卡内分别上传正反面并补充授权书', () => {
     visitOnboarding('authorized_agent')
 
     cy.contains('.completion-count', '必填完成 0 / 5')
-    cy.get('[data-cy="identity-upload-legal_representative_id_back"] button[type="button"]')
-      .contains('上传反面')
-      .should('be.disabled')
+    cy.get('[data-cy="identity-material-group"] .identity-document-card').should('have.length', 1)
+    cy.get('[data-cy="identity-upload-legal_representative_id_front"]').should('be.visible')
+    cy.get('[data-cy="identity-upload-legal_representative_id_back"]').should('be.visible')
     cy.get('[data-cy="identity-upload-agent_authorization"] button[type="button"]')
       .contains('上传授权书')
       .should('be.disabled')
@@ -115,6 +115,7 @@ describe('主办方身份材料', () => {
       { force: true },
     )
     cy.contains('.completion-count', '必填完成 1 / 5')
+    cy.contains('.identity-document-card__count', '已完成 1 / 2')
     cy.contains(
       '[data-cy="identity-upload-legal_representative_id_front"]',
       'quji-public-identity-sample.webp',
@@ -124,20 +125,13 @@ describe('主办方身份材料', () => {
       '[data-cy="identity-upload-legal_representative_id_front"]',
       'quji-public-identity-sample.webp',
     )
-    cy.get('[data-cy="identity-upload-legal_representative_id_front"]').contains('查看文件').click()
-    cy.get('.drawer-preview img')
-      .should('be.visible')
-      .and(($image) => expect(($image[0] as HTMLImageElement).naturalWidth).to.be.greaterThan(0))
-    cy.get('.preview-dialog__footer').contains('关闭').click()
-    cy.get('[data-cy="identity-upload-legal_representative_id_back"] button[type="button"]')
-      .contains('上传反面')
-      .should('not.be.disabled')
 
     cy.get('[data-cy="file-legal_representative_id_back"]').selectFile(
       'public/materials/quji-public-identity-back-sample.webp',
       { force: true },
     )
     cy.contains('.completion-count', '必填完成 2 / 5')
+    cy.contains('.identity-document-card__count', '已完成 2 / 2')
     cy.get('[data-cy="identity-upload-agent_authorization"] button[type="button"]')
       .contains('上传授权书')
       .should('not.be.disabled')
@@ -166,6 +160,22 @@ describe('主办方身份材料', () => {
       { force: true },
     )
     cy.contains('.completion-count', '必填完成 2 / 4')
-    cy.get('[data-cy="identity-upload-agent_authorization"]').should('not.exist')
+  })
+
+  it('营业执照只上传一次并自动关联完整主体信息', () => {
+    visitOnboarding('legal_representative')
+
+    cy.get('[data-cy="file-business_license"]').selectFile(
+      'public/materials/quji-public-license-sample.webp',
+      { force: true },
+    )
+    cy.get('[data-cy="subject-profile"]').within(() => {
+      cy.contains('营业执照信息已自动关联')
+      cy.get('input').should('have.length', 6)
+      cy.get('input').eq(0).should('have.value', '测试文化活动有限公司')
+      cy.get('input').eq(1).should('have.value', '91650100MA7QJ2026X')
+      cy.get('input').eq(2).should('have.value', '穆合塔尔·阿不都热依木')
+      cy.contains('系统已自动关联到主办方主体档案')
+    })
   })
 })

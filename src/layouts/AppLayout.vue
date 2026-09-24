@@ -30,6 +30,7 @@ import {
 } from '@lucide/vue'
 import { useSessionStore } from '@/stores/session'
 import { useOnboardingStore } from '@/stores/onboarding'
+import { useSubmissionReviewStore } from '@/stores/submissions'
 import type { UserRole } from '@/types/platform'
 
 interface MenuItem {
@@ -60,6 +61,7 @@ const route = useRoute()
 const router = useRouter()
 const session = useSessionStore()
 const onboarding = useOnboardingStore()
+const submissionReview = useSubmissionReviewStore()
 const collapsed = ref(false)
 const mobileOpen = ref(false)
 const notificationOpen = ref(false)
@@ -262,8 +264,7 @@ const allMenu: MenuItem[] = [
     label: '角色服装道具',
     icon: Shirt,
     group: '活动运营',
-    roles: ['platform', 'organizer', 'onsite'],
-    badge: '2',
+    roles: ['platform', 'organizer'],
   },
   {
     path: '/onsite',
@@ -329,13 +330,24 @@ const notificationItems = ref<NotificationItem[]>([
 ])
 
 const role = computed(() => session.session?.user.role)
+const costumeReviewCount = computed(() => {
+  if (role.value === 'organizer') return submissionReview.organizerBatchCandidates.length
+  if (role.value === 'platform') return submissionReview.platformBatchCandidates.length
+  return 0
+})
 const menu = computed(() =>
-  allMenu.filter(
-    (item) =>
-      role.value &&
-      item.roles.includes(role.value) &&
-      (!item.requiresApproval || onboarding.canCreateActivity),
-  ),
+  allMenu
+    .filter(
+      (item) =>
+        role.value &&
+        item.roles.includes(role.value) &&
+        (!item.requiresApproval || onboarding.canCreateActivity),
+    )
+    .map((item) =>
+      item.path === '/costumes'
+        ? { ...item, badge: costumeReviewCount.value ? String(costumeReviewCount.value) : undefined }
+        : item,
+    ),
 )
 const groups: MenuItem['group'][] = ['账号与主体', '工作协同', '活动运营', '资料与复盘']
 const groupedMenu = computed(() =>

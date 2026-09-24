@@ -82,6 +82,22 @@ export interface RegistrationIdentity {
   authorizationConfirmed: boolean
 }
 
+export interface BusinessLicenseRecognition {
+  organizationName: string
+  unifiedSocialCreditCode: string
+  legalRepresentativeName: string
+  establishedAt: string
+  businessTerm: string
+  registeredAddress: string
+  confidence: number
+  recognizedAt: string
+}
+
+export interface SubjectProfile extends BusinessLicenseRecognition {
+  source: 'license_recognition' | 'manual'
+  confirmed: boolean
+}
+
 export interface OnboardingMaterial {
   key: OnboardingMaterialKey
   name: string
@@ -95,12 +111,15 @@ export interface OnboardingMaterial {
   isImage?: boolean
   source?: 'upload' | 'sample'
   reviewComment?: string
+  reviewedBy?: string
+  reviewedAt?: string
   updatedAt?: string
 }
 
 export interface OnboardingState {
   organizerId?: string
   identity?: RegistrationIdentity
+  subjectProfile?: SubjectProfile
   status: OnboardingStatus
   materials: OnboardingMaterial[]
   submittedAt?: string
@@ -115,6 +134,66 @@ export interface OnboardingMaterialInput {
   previewUrl?: string
   isImage?: boolean
   source: 'upload' | 'sample'
+}
+
+export type ParticipantSubmissionStatus =
+  'organizer_pending' | 'platform_pending' | 'changes_required' | 'security_review' | 'approved'
+
+export type SubmissionMaterialType =
+  'character_reference' | 'costume_photo' | 'prop_photo' | 'id_front' | 'id_back' | 'face_capture'
+
+export interface SubmissionMaterial {
+  type: SubmissionMaterialType
+  name: string
+  previewUrl: string
+}
+
+export interface IdentityVerification {
+  maskedIdNumber: string
+  realNameStatus: 'passed' | 'pending' | 'failed'
+  faceMatchStatus: 'passed' | 'pending' | 'failed'
+  faceMatchScore: number
+}
+
+export interface SubmissionReviewDecision {
+  decision: 'approved' | 'changes_required'
+  reviewerName: string
+  reviewerRole: 'organizer' | 'platform'
+  reviewedAt: string
+  comment?: string
+}
+
+export interface SubmissionAuditLog {
+  id: string
+  action: string
+  actorName: string
+  actorRole: string
+  occurredAt: string
+  comment?: string
+}
+
+export interface ParticipantSubmission {
+  id: string
+  activityId: string
+  organizerId: string
+  sourceChannel: '漫圈 App'
+  participant: string
+  role: string
+  source: string
+  costume: string
+  prop: string
+  riskLevel: 'low' | 'medium' | 'high'
+  riskLabel: string
+  similarityGroup?: string
+  similarityScore?: number
+  materialsComplete: boolean
+  status: ParticipantSubmissionStatus
+  submittedAt: string
+  identity: IdentityVerification
+  materials: SubmissionMaterial[]
+  organizerReview?: SubmissionReviewDecision
+  platformReview?: SubmissionReviewDecision
+  auditLogs: SubmissionAuditLog[]
 }
 
 export interface LocalActivityDraft {

@@ -40,10 +40,10 @@ import { useRouter } from 'vue-router'
 import { platformApi } from '@/api/platform'
 import ActivityLifecycle from '@/components/ActivityLifecycle.vue'
 import StatusTag from '@/components/StatusTag.vue'
-import type { ActivityDetail, MaterialItem, TicketType } from '@/types/platform'
+import { useSubmissionReviewStore } from '@/stores/submissions'
+import type { ActivityDetail, MaterialItem, ParticipantSubmissionStatus, TicketType } from '@/types/platform'
 
 type TicketMode = 'types' | 'orders' | 'refunds'
-type CostumeStatus = '已通过' | '协同核验' | '待审核'
 type IssueLevel = '高' | '中' | '低'
 
 interface CostumeRecord {
@@ -53,7 +53,7 @@ interface CostumeRecord {
   source: string
   costume: string
   props: string
-  status: CostumeStatus
+  status: string
   risk: string
   log: string
 }
@@ -69,6 +69,7 @@ interface IssueRecord {
 
 const props = defineProps<{ id: string }>()
 const router = useRouter()
+const submissionReview = useSubmissionReviewStore()
 const loading = ref(true)
 const detail = ref<ActivityDetail | null>(null)
 const tab = ref('overview')
@@ -130,52 +131,26 @@ const participantGroups = [
   { name: '参展商与工作人员', total: '268', status: '资料核验 255', action: '查看资料', icon: UserCog },
 ]
 
-const costumeRecords = ref<CostumeRecord[]>([
-  {
-    id: 'costume-1',
-    person: '张三',
-    character: '甘雨',
-    source: '《原神》',
-    costume: '白色长袍 / 渐变蓝发 / 羊角发箍',
-    props: '紫色铃铛挂饰，无锐利金属',
-    status: '已通过',
-    risk: '低风险',
-    log: '林洁 · 10:35 完成初核',
-  },
-  {
-    id: 'costume-2',
-    person: '古丽米热·阿布都',
-    character: '敦煌伎乐飞天',
-    source: '国风原创',
-    costume: '石青色长裙 / 朱砂红飘带',
-    props: 'EVA 泡棉琵琶，非金属材质',
-    status: '已通过',
-    risk: '低风险',
-    log: '陈涛 · 11:22 完成初核',
-  },
-  {
-    id: 'costume-3',
-    person: '李思远',
-    character: '机甲重装佣兵',
-    source: '原创设定',
-    costume: '黑色仿战术背心 / 外骨骼臂甲',
-    props: '仿真重弩模型，长约 1.2 米',
-    status: '协同核验',
-    risk: '高关注',
-    log: '已转现场安保复验',
-  },
-  {
-    id: 'costume-4',
-    person: '何晓晨',
-    character: '雷电将军',
-    source: '《原神》',
-    costume: '紫色印花振袖 / 编发发簪',
-    props: '轻质木质长刀，海绵安全鞘',
-    status: '待审核',
-    risk: '常规核验',
-    log: '用户端 12:05 提交',
-  },
-])
+const submissionStatusLabels: Record<ParticipantSubmissionStatus, string> = {
+  organizer_pending: '待主办方初审',
+  platform_pending: '待平台复核',
+  changes_required: '待用户补充',
+  security_review: '协同核验',
+  approved: '已通过',
+}
+const costumeRecords = computed<CostumeRecord[]>(() =>
+  submissionReview.submissions.map((item) => ({
+    id: item.id,
+    person: item.participant,
+    character: item.role,
+    source: item.source,
+    costume: item.costume,
+    props: item.prop,
+    status: submissionStatusLabels[item.status],
+    risk: item.riskLabel,
+    log: `${item.auditLogs.at(-1)?.actorName || '系统'} · ${item.auditLogs.at(-1)?.action || '等待处理'}`,
+  })),
+)
 
 const ticketSold = computed(() => {
   if (!detail.value) return 0
@@ -330,16 +305,13 @@ function saveParticipant() {
 }
 
 function verifyCostume(item: CostumeRecord) {
-  item.status = '已通过'
-  item.risk = '已完成复验'
-  item.log = '林洁 · 刚刚完成协同核验'
   selectedCostume.value = null
-  ElMessage.success('申报已通过，并已写入活动操作记录')
+  router.push({ name: 'costumes', query: { submission: item.id } })
 }
 
 function returnCostume() {
   selectedCostume.value = null
-  ElMessage.info('已发起退回补充通知')
+  router.push({ name: 'costumes' })
 }
 
 function submitIssue() {
@@ -829,28 +801,30 @@ function ticketProgress(value: unknown) {
                   </div>
                   <div class="header-actions">
                     <el-button @click="exportCostumes"><Download :size="16" />导出清单</el-button
-                    ><el-button type="primary" @click="ElMessage.success('6 条待审核申报已加入批量处理队列')"
-                      ><ClipboardCheck :size="16" />批量处理</el-button
+                    ><el-button type="primary" @click="router.push('/costumes')"
+                      ><ClipboardCheck :size="16" />进入完整审核</el-button
                     >
                   </div>
                 </div>
                 <section class="stat-grid stat-grid--four">
                   <article class="stat-card">
-                    <ClipboardCheck :size="21" /><span>申报总数</span><strong>326</strong
-                    ><small>来自已支付 Coser 票订单</small>
+                    <ClipboardCheck :size="21" /><span>当前审核记录</span
+                    ><strong>{{ submissionReview.submissions.length }}</strong
+                    ><small>来自漫圈 App</small>
                   </article>
                   <article class="stat-card stat-card--blue">
-                    <CircleCheckBig :size="21" /><span>已通过</span><strong>318</strong
+                    <CircleCheckBig :size="21" /><span>双层审核通过</span
+                    ><strong>{{ submissionReview.approvedCount }}</strong
                     ><small>可进入现场核验</small>
                   </article>
                   <article class="stat-card stat-card--amber">
-                    <Clock3 :size="21" /><span>待审核</span><strong>6</strong><small>资料完整性待确认</small>
+                    <Clock3 :size="21" /><span>流程处理中</span
+                    ><strong>{{ submissionReview.pendingCount }}</strong
+                    ><small>主办方或平台待办</small>
                   </article>
                   <article class="stat-card stat-card--rose">
                     <CircleAlert :size="21" /><span>协同核验</span
-                    ><strong>{{
-                      costumeRecords.filter((record) => record.status === '协同核验').length
-                    }}</strong
+                    ><strong>{{ submissionReview.securityReviewCount }}</strong
                     ><small>需现场安保复验</small>
                   </article>
                 </section>
@@ -1440,8 +1414,8 @@ function ticketProgress(value: unknown) {
                 </section>
               </div>
               <div class="drawer-footer">
-                <el-button @click="returnCostume">退回补充</el-button>
-                <el-button type="primary" @click="verifyCostume(selectedCostume)">确认通过</el-button>
+                <el-button @click="returnCostume">返回列表</el-button>
+                <el-button type="primary" @click="verifyCostume(selectedCostume)">进入完整审核</el-button>
               </div>
             </template>
           </el-drawer>

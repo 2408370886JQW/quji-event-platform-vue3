@@ -47,7 +47,6 @@ const detailsRules: FormRules = {
     { required: true, message: '请输入本人身份证号', trigger: 'blur' },
     { pattern: /(^\d{15}$)|(^\d{17}[0-9Xx]$)/, message: '请输入有效的身份证号', trigger: 'blur' },
   ],
-  organizationName: [{ required: true, message: '请输入营业执照上的主体名称', trigger: 'blur' }],
 }
 const stepTitle = computed(() => ['验证手机号', '先确认您的办理身份', '填写本人及主体信息'][step.value])
 const identityHint = computed(() =>
@@ -230,9 +229,16 @@ async function completeRegistration() {
           <el-form-item label="本人身份证号" prop="idNumber">
             <el-input v-model="form.idNumber" size="large" placeholder="用于本人实名核验 默认脱敏展示" />
           </el-form-item>
-          <el-form-item label="主办方主体名称" prop="organizationName">
-            <el-input v-model="form.organizationName" size="large" placeholder="请输入营业执照上的主体名称" />
+          <el-form-item label="主办方主体名称（可暂不填写）" prop="organizationName">
+            <el-input
+              v-model="form.organizationName"
+              size="large"
+              placeholder="上传营业执照后将自动读取并关联"
+            />
           </el-form-item>
+          <p class="license-autofill-note">
+            下一步只需上传一次营业执照，主体名称、统一社会信用代码、法定代表人、成立日期、营业期限和登记住所会自动填入。
+          </p>
           <el-checkbox v-model="form.authorizationConfirmed" class="confirmation">
             {{ confirmationText }}
           </el-checkbox>
@@ -518,6 +524,15 @@ async function completeRegistration() {
   align-items: flex-start;
   color: var(--q-muted-strong);
   font-size: 14px;
+  line-height: 1.65;
+}
+.license-autofill-note {
+  margin: -3px 0 16px;
+  padding: 11px 12px;
+  border-left: 3px solid var(--q-primary);
+  background: var(--q-primary-soft);
+  color: var(--q-muted-strong);
+  font-size: 13px;
   line-height: 1.65;
 }
 .next-material-note {

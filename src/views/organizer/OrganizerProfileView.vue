@@ -3,6 +3,7 @@ import { computed, ref } from 'vue'
 import { ElMessage } from 'element-plus'
 import { Upload } from '@lucide/vue'
 import StatusTag from '@/components/StatusTag.vue'
+import { useOnboardingStore } from '@/stores/onboarding'
 import { useSessionStore } from '@/stores/session'
 import type { MaterialItem } from '@/types/platform'
 
@@ -87,7 +88,23 @@ const materials = ref<SubjectMaterial[]>([
 const dialog = ref(false)
 const selected = ref<SubjectMaterial | null>(null)
 const session = useSessionStore()
+const onboarding = useOnboardingStore()
 const isReadOnly = computed(() => session.session?.user.role === 'culture')
+const companyName = computed(
+  () =>
+    onboarding.state.subjectProfile?.organizationName ||
+    onboarding.state.identity?.organizationName ||
+    '新疆星河文化传媒有限公司',
+)
+const creditCode = computed(
+  () => onboarding.state.subjectProfile?.unifiedSocialCreditCode || '91650100XXXXXXXXXX',
+)
+const legalRepresentative = computed(
+  () => onboarding.state.subjectProfile?.legalRepresentativeName || '待营业执照识别',
+)
+const registeredAddress = computed(
+  () => onboarding.state.subjectProfile?.registeredAddress || '待营业执照识别',
+)
 function open(item?: SubjectMaterial) {
   selected.value = item || materials.value[0] || null
   dialog.value = true
@@ -131,7 +148,7 @@ function save() {
     <section class="q-panel">
       <div class="q-panel__header">
         <div>
-          <h2 class="q-panel__title">新疆星河文化传媒有限公司</h2>
+          <h2 class="q-panel__title">{{ companyName }}</h2>
           <p class="q-panel__desc">主体材料可被多场活动引用，提交后按活动形成独立版本快照。</p>
         </div>
         <div class="profile-stats">
@@ -141,9 +158,27 @@ function save() {
       </div>
       <div class="q-panel__body">
         <div class="company-grid">
-          <div><span>统一社会信用代码</span><strong>91650100XXXXXXXXXX</strong></div>
-          <div><span>主要联系人</span><strong>林洁 · 138****8821</strong></div>
+          <div>
+            <span>统一社会信用代码</span><strong>{{ creditCode }}</strong>
+          </div>
+          <div>
+            <span>法定代表人</span><strong>{{ legalRepresentative }}</strong>
+          </div>
+          <div>
+            <span>主要联系人</span
+            ><strong
+              >{{ onboarding.state.identity?.name || '林洁' }} ·
+              {{
+                onboarding.state.identity
+                  ? `${onboarding.state.identity.phone.slice(0, 3)}****${onboarding.state.identity.phone.slice(-4)}`
+                  : '138****8821'
+              }}</strong
+            >
+          </div>
           <div><span>主体安全责任人</span><strong>已登记 · 脱敏展示</strong></div>
+          <div class="company-grid__address">
+            <span>登记住所</span><strong>{{ registeredAddress }}</strong>
+          </div>
         </div>
       </div>
     </section>
@@ -283,6 +318,9 @@ function save() {
   color: var(--q-text);
   font-size: 15px;
 }
+.company-grid__address {
+  grid-column: span 2;
+}
 .conditional {
   display: inline-block;
   flex: 0 0 auto;
@@ -390,10 +428,13 @@ function save() {
   font-size: 14px;
   line-height: 1.65;
 }
-@media (max-width: 700px) {
+@media (max-width: 760px) {
   .company-grid,
   .workflow-cards {
     grid-template-columns: 1fr;
+  }
+  .company-grid__address {
+    grid-column: auto;
   }
   .profile-stats {
     flex-direction: column;

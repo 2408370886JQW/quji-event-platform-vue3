@@ -1,7 +1,11 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { createPinia, setActivePinia } from 'pinia'
 import { useOnboardingStore } from './onboarding'
-import type { OnboardingMaterialKey, RegistrationIdentity } from '@/types/platform'
+import type {
+  BusinessLicenseRecognition,
+  OnboardingMaterialKey,
+  RegistrationIdentity,
+} from '@/types/platform'
 
 const authorizedAgentIdentity: RegistrationIdentity = {
   phone: '13800138000',
@@ -18,6 +22,17 @@ const legalRepresentativeIdentity: RegistrationIdentity = {
   agentIdentity: 'legal_representative',
 }
 
+const licenseRecognition: BusinessLicenseRecognition = {
+  organizationName: '新疆新潮文化活动有限公司',
+  unifiedSocialCreditCode: '91650100MA7TEST001',
+  legalRepresentativeName: '张明',
+  establishedAt: '2023-06-18',
+  businessTerm: '2023-06-18 至长期',
+  registeredAddress: '新疆乌鲁木齐市水磨沟区会展大道 88 号',
+  confidence: 0.98,
+  recognizedAt: '2026-09-24 10:38',
+}
+
 function upload(key: string) {
   const store = useOnboardingStore()
   store.uploadMaterial(key as OnboardingMaterialKey, {
@@ -29,13 +44,23 @@ function upload(key: string) {
   })
 }
 
+function uploadLicenseWithRecognition() {
+  const store = useOnboardingStore()
+  store.uploadBusinessLicense(
+    {
+      fileName: '营业执照.webp',
+      fileType: 'image/webp',
+      previewUrl: '/materials/quji-public-license-sample.webp',
+      isImage: true,
+      source: 'upload',
+    },
+    licenseRecognition,
+  )
+}
+
 function completeCommonMaterials() {
-  for (const key of [
-    'business_license',
-    'legal_representative_id_front',
-    'legal_representative_id_back',
-    'safety_manager',
-  ]) {
+  uploadLicenseWithRecognition()
+  for (const key of ['legal_representative_id_front', 'legal_representative_id_back', 'safety_manager']) {
     upload(key)
   }
 }
@@ -44,6 +69,14 @@ function completeRequiredMaterials() {
   completeCommonMaterials()
   upload('agent_authorization')
   return useOnboardingStore()
+}
+
+function submitAuthorizedAgentApplication() {
+  const store = useOnboardingStore()
+  store.setIdentity(authorizedAgentIdentity, 'organizer-1')
+  completeRequiredMaterials()
+  store.submitForReview()
+  return store
 }
 
 describe('onboarding state machine', () => {
@@ -70,7 +103,7 @@ describe('onboarding state machine', () => {
   it('requires both sides of the legal representative ID', () => {
     const store = useOnboardingStore()
     store.setIdentity(legalRepresentativeIdentity, 'organizer-1')
-    upload('business_license')
+    uploadLicenseWithRecognition()
     upload('legal_representative_id_front')
     upload('safety_manager')
 
@@ -104,6 +137,17 @@ describe('onboarding state machine', () => {
     expect(store.state.materials.find((item) => item.key === 'agent_authorization')?.required).toBe(false)
   })
 
+  it('fills all organizer fields from one business-license upload', () => {
+    const store = useOnboardingStore()
+    store.setIdentity(legalRepresentativeIdentity, 'organizer-1')
+
+    uploadLicenseWithRecognition()
+
+    expect(store.state.subjectProfile).toMatchObject(licenseRecognition)
+    expect(store.state.subjectProfile?.confirmed).toBe(true)
+    expect(store.state.identity?.organizationName).toBe('新疆新潮文化活动有限公司')
+  })
+
   it('submits complete materials into a platform-review state', () => {
     const store = useOnboardingStore()
     store.setIdentity(authorizedAgentIdentity, 'organizer-1')
@@ -121,31 +165,39 @@ describe('onboarding state machine', () => {
     expect(store.canSubmit).toBe(false)
   })
 
-  it('allows only a submitted application to be approved and then unlocks activity creation', () => {
-    const store = useOnboardingStore()
-    store.setIdentity(authorizedAgentIdentity, 'organizer-1')
-    completeRequiredMaterials()
+  it('requires every required material to pass item review before final approval', () => {
+    const store = submitAuthorizedAgentApplication()
 
-    expect(store.canCreateActivity).toBe(false)
-    store.submitForReview()
-    store.approve()
+    store.reviewMaterial('business_license', 'approve')
+    expect(store.state.materials.find((item) => item.key === 'business_license')?.status).toBe('approved')
+    expect(store.canFinalizeReview).toBe(false)
+    expect(() => store.finalizeReview()).toThrow('请先完成全部必填材料的逐项审核')
 
+    for (const material of store.state.materials.filter(
+      (item) => item.required && item.key !== 'business_license',
+    )) {
+      store.reviewMaterial(material.key, 'approve')
+    }
+
+    expect(store.canFinalizeReview).toBe(true)
+    store.finalizeReview()
     expect(store.state.status).toBe('approved')
     expect(store.canCreateActivity).toBe(true)
-    expect(store.requiredMaterialsComplete).toBe(true)
   })
 
-  it('returns a submitted application to changes required with the platform comment', () => {
-    const store = useOnboardingStore()
-    store.setIdentity(authorizedAgentIdentity, 'organizer-1')
-    completeRequiredMaterials()
-    store.submitForReview()
-    store.requestChanges('请补充经办授权书签署页')
+  it('returns only one material and preserves approved item decisions', () => {
+    const store = submitAuthorizedAgentApplication()
+
+    store.reviewMaterial('business_license', 'approve')
+    store.reviewMaterial('agent_authorization', 'request_changes', '请补充签署盖章页')
 
     expect(store.state.status).toBe('changes_required')
-    expect(store.state.reviewComment).toBe('请补充经办授权书签署页')
-    expect(store.state.materials.find((material) => material.key === 'agent_authorization')?.status).toBe(
+    expect(store.state.materials.find((item) => item.key === 'business_license')?.status).toBe('approved')
+    expect(store.state.materials.find((item) => item.key === 'agent_authorization')?.status).toBe(
       'changes_required',
+    )
+    expect(store.state.materials.find((item) => item.key === 'agent_authorization')?.reviewComment).toBe(
+      '请补充签署盖章页',
     )
   })
 })

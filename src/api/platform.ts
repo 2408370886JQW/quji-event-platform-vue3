@@ -5,6 +5,7 @@ import type {
   ApiResponse,
   DashboardPayload,
   LoginPayload,
+  ParticipantSubmission,
   UserSession,
 } from '@/types/platform'
 
@@ -26,6 +27,37 @@ export const platformApi = {
   async getActivityDetail(id: string): Promise<ActivityDetail> {
     if (isMock) return delay({ ...activityDetail, id })
     const result = await http.get<unknown, ApiResponse<ActivityDetail>>(`/activities/${id}`)
+    return result.data
+  },
+  async getParticipantSubmissions(activityId: string): Promise<ParticipantSubmission[]> {
+    const result = await http.get<unknown, ApiResponse<ParticipantSubmission[]>>(
+      `/activities/${activityId}/participant-submissions`,
+    )
+    return result.data
+  },
+  async reviewParticipantSubmission(
+    activityId: string,
+    submissionId: string,
+    payload: {
+      stage: 'organizer' | 'platform'
+      action: 'approve' | 'request_changes'
+      comment?: string
+    },
+  ): Promise<ParticipantSubmission> {
+    const result = await http.post<unknown, ApiResponse<ParticipantSubmission>>(
+      `/activities/${activityId}/participant-submissions/${submissionId}/reviews`,
+      payload,
+    )
+    return result.data
+  },
+  async batchReviewParticipantSubmissions(
+    activityId: string,
+    payload: { stage: 'organizer' | 'platform'; submissionIds: string[]; ruleVersion: string },
+  ): Promise<ParticipantSubmission[]> {
+    const result = await http.post<unknown, ApiResponse<ParticipantSubmission[]>>(
+      `/activities/${activityId}/participant-submissions/batch-review`,
+      payload,
+    )
     return result.data
   },
 }
