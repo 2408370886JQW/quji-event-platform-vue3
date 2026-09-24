@@ -10,9 +10,13 @@ export default defineConfig(({ mode }) => {
   return {
     plugins: [
       vue(),
-      Components({
-        resolvers: [ElementPlusResolver()],
-      }),
+      ...(mode === 'test'
+        ? []
+        : [
+            Components({
+              resolvers: [ElementPlusResolver()],
+            }),
+          ]),
     ],
     resolve: {
       alias: {

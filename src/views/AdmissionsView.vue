@@ -114,7 +114,10 @@ function requestChanges() {
       </div>
       <div v-if="onboarding.state.identity" class="applicant-grid q-panel__body">
         <div>
-          <span>经办人</span><strong>{{ onboarding.state.identity.name }}</strong>
+          <span>{{
+            onboarding.state.identity.agentIdentity === 'legal_representative' ? '法定代表人' : '被授权经办人'
+          }}</span
+          ><strong>{{ onboarding.state.identity.name }}</strong>
         </div>
         <div>
           <span>手机号</span
@@ -131,6 +134,9 @@ function requestChanges() {
               ? '法定代表人本人办理'
               : '被授权经办人办理'
           }}</strong>
+        </div>
+        <div>
+          <span>主办方主体</span><strong>{{ onboarding.state.identity.organizationName || '待补充' }}</strong>
         </div>
       </div>
       <div v-else class="q-empty">
@@ -282,7 +288,7 @@ function requestChanges() {
 }
 .applicant-grid {
   display: grid;
-  grid-template-columns: repeat(3, 1fr);
+  grid-template-columns: repeat(4, minmax(0, 1fr));
   gap: 20px;
 }
 .applicant-grid div {

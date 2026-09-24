@@ -27,6 +27,7 @@ export default tseslint.config(
         Event: 'readonly',
         File: 'readonly',
         FileReader: 'readonly',
+        HTMLElement: 'readonly',
         HTMLInputElement: 'readonly',
         window: 'readonly',
         document: 'readonly',
@@ -38,6 +39,12 @@ export default tseslint.config(
       '@typescript-eslint/no-explicit-any': 'error',
       'vue/multi-word-component-names': 'off',
       'vue/require-default-prop': 'off',
+    },
+  },
+  {
+    files: ['src/**/*.test.ts'],
+    rules: {
+      'vue/one-component-per-file': 'off',
     },
   },
   {

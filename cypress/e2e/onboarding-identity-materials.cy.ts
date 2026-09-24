@@ -18,6 +18,7 @@ function onboardingState(agentIdentity: 'legal_representative' | 'authorized_age
       phone: '13800138000',
       name: '流程测试员',
       idNumber: '110101199001011234',
+      organizationName: '测试文化活动有限公司',
       agentIdentity,
       authorizationConfirmed: true,
     },
@@ -64,6 +65,38 @@ function visitOnboarding(agentIdentity: 'legal_representative' | 'authorized_age
     },
   })
 }
+
+describe('首次入驻身份选择', () => {
+  it('不预设经办人并在保存后直接进入对应材料清单', () => {
+    cy.visit('/register', {
+      onBeforeLoad(win) {
+        win.localStorage.clear()
+      },
+    })
+
+    cy.get('input[placeholder="请输入常用手机号"]').type('13800138000')
+    cy.get('input[placeholder="请输入验证码"]').type('246810')
+    cy.contains('button', '验证并选择办理身份').click()
+
+    cy.contains('先确认您的办理身份')
+    cy.get('input[type="radio"]:checked').should('have.length', 0)
+    cy.get('input[placeholder="请输入本人真实姓名"]').should('not.exist')
+
+    cy.contains('.identity-choice', '我是法定代表人').click()
+    cy.contains('button', '确认身份并继续').click()
+    cy.contains('法定代表人姓名')
+    cy.get('input[placeholder="请输入本人真实姓名"]').type('张明')
+    cy.get('input[placeholder="用于本人实名核验 默认脱敏展示"]').type('650102199001011234')
+    cy.get('input[placeholder="请输入营业执照上的主体名称"]').type('新疆新潮文化活动有限公司')
+    cy.get('.confirmation input[type="checkbox"]').check()
+    cy.contains('button', '保存并上传材料').click()
+
+    cy.url().should('include', '/onboarding?focus=materials')
+    cy.get('[data-cy="materials-panel"]').should('be.visible')
+    cy.contains('.completion-count', '必填完成 0 / 4')
+    cy.get('[data-cy="identity-upload-agent_authorization"]').should('not.exist')
+  })
+})
 
 describe('主办方身份材料', () => {
   it('按正面、反面、授权书顺序完成被授权经办人材料', () => {

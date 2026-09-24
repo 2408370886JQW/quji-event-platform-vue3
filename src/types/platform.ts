@@ -77,6 +77,7 @@ export interface RegistrationIdentity {
   phone: string
   name: string
   idNumber: string
+  organizationName: string
   agentIdentity: 'legal_representative' | 'authorized_agent'
   authorizationConfirmed: boolean
 }

@@ -1,6 +1,6 @@
 <script setup lang="ts">
-import { computed, reactive, ref } from 'vue'
-import { useRouter } from 'vue-router'
+import { computed, nextTick, onMounted, reactive, ref } from 'vue'
+import { useRoute, useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import {
   BadgeCheck,
@@ -20,9 +20,11 @@ import { useOnboardingStore } from '@/stores/onboarding'
 import type { OnboardingMaterial, OnboardingMaterialKey, OnboardingStatus } from '@/types/platform'
 
 const router = useRouter()
+const route = useRoute()
 const onboarding = useOnboardingStore()
 const previewDialog = ref(false)
 const selectedMaterial = ref<OnboardingMaterial | null>(null)
+const materialsPanel = ref<HTMLElement>()
 const safetyForm = reactive({
   name: '',
   phone: '',
@@ -117,13 +119,10 @@ const activeStep = computed(() => {
 const isEditable = computed(
   () => onboarding.state.status !== 'submitted' && onboarding.state.status !== 'approved',
 )
-const identityMode = computed({
-  get: () => onboarding.state.identity?.agentIdentity || 'authorized_agent',
-  set: (value: 'legal_representative' | 'authorized_agent') => onboarding.setAgentIdentity(value),
-})
+const applicantIdentity = computed(() => onboarding.state.identity?.agentIdentity)
 const identityMaterials = computed(() => {
   const keys: OnboardingMaterialKey[] = ['legal_representative_id_front', 'legal_representative_id_back']
-  if (identityMode.value === 'authorized_agent') keys.push('agent_authorization')
+  if (applicantIdentity.value === 'authorized_agent') keys.push('agent_authorization')
   return keys
     .map((key) => onboarding.state.materials.find((item) => item.key === key))
     .filter((item): item is OnboardingMaterial => Boolean(item))
@@ -134,9 +133,12 @@ const standaloneMaterials = computed(() =>
   ),
 )
 const identityModeSummary = computed(() =>
-  identityMode.value === 'legal_representative'
+  applicantIdentity.value === 'legal_representative'
     ? '法定代表人本人办理 无需上传经办授权书'
     : '由被授权经办人办理 需同时上传经办授权书',
+)
+const applicantNameLabel = computed(() =>
+  applicantIdentity.value === 'legal_representative' ? '法定代表人' : '被授权经办人',
 )
 const identityFrontReady = computed(() =>
   Boolean(onboarding.state.materials.find((item) => item.key === 'legal_representative_id_front')?.fileName),
@@ -300,6 +302,13 @@ function materialLabel(status: OnboardingMaterial['status']) {
     approved: '已核验',
   }[status]
 }
+
+onMounted(async () => {
+  if (route.query.focus !== 'materials') return
+  await nextTick()
+  if (!materialsPanel.value) return
+  window.scrollTo({ top: Math.max(0, materialsPanel.value.offsetTop - 84), behavior: 'smooth' })
+})
 </script>
 
 <template>
@@ -361,13 +370,14 @@ function materialLabel(status: OnboardingMaterial['status']) {
       <div class="q-panel__header">
         <div>
           <h2 class="q-panel__title">实名核验信息</h2>
-          <p class="q-panel__desc">注册时已保存的经办人信息，身份证号默认脱敏展示。</p>
+          <p class="q-panel__desc">注册时已保存的本人身份与主办方主体信息 身份证号默认脱敏展示。</p>
         </div>
         <span class="q-status q-status--success"><BadgeCheck :size="15" />已完成</span>
       </div>
       <div class="identity-grid q-panel__body">
         <div>
-          <span>经办人</span><strong>{{ onboarding.state.identity.name }}</strong>
+          <span>{{ applicantNameLabel }}</span
+          ><strong>{{ onboarding.state.identity.name }}</strong>
         </div>
         <div>
           <span>手机号</span>
@@ -385,10 +395,13 @@ function materialLabel(status: OnboardingMaterial['status']) {
               : '被授权经办人办理'
           }}</strong>
         </div>
+        <div>
+          <span>主办方主体</span><strong>{{ onboarding.state.identity.organizationName || '待补充' }}</strong>
+        </div>
       </div>
     </section>
 
-    <section class="materials-panel q-panel">
+    <section ref="materialsPanel" class="materials-panel q-panel" data-cy="materials-panel">
       <div class="q-panel__header materials-header">
         <div>
           <h2 class="q-panel__title">主体材料</h2>
@@ -407,26 +420,20 @@ function materialLabel(status: OnboardingMaterial['status']) {
           <div class="identity-material-group__header">
             <div>
               <span class="group-index"><IdCard :size="17" />身份材料</span>
-              <h3>法定代表人身份证明与经办授权</h3>
-              <p>先确认本次由谁办理，再按顺序上传对应文件。</p>
+              <h3>法定代表人身份证与经办授权材料</h3>
+              <p>办理身份已在注册时确认 请按顺序上传对应文件</p>
             </div>
             <span class="group-status">{{ identityModeSummary }}</span>
           </div>
 
           <div class="handling-mode">
             <div>
-              <strong>本次由谁办理</strong>
-              <span>选择后系统会自动调整必填材料和完成数量</span>
+              <strong>办理身份已在注册时确认</strong>
+              <span>材料清单已按您的选择自动生成</span>
             </div>
-            <el-radio-group
-              v-model="identityMode"
-              :disabled="!isEditable"
-              class="handling-mode__options"
-              data-cy="handling-mode"
-            >
-              <el-radio-button value="legal_representative">法定代表人本人办理</el-radio-button>
-              <el-radio-button value="authorized_agent">被授权经办人办理</el-radio-button>
-            </el-radio-group>
+            <span class="handling-mode__result" data-cy="handling-mode-result">
+              {{ applicantIdentity === 'legal_representative' ? '我是法定代表人' : '我是被授权经办人' }}
+            </span>
           </div>
 
           <div class="identity-upload-grid">
@@ -877,7 +884,7 @@ function materialLabel(status: OnboardingMaterial['status']) {
 
 .identity-grid {
   display: grid;
-  grid-template-columns: repeat(3, 1fr);
+  grid-template-columns: repeat(4, minmax(0, 1fr));
   gap: 20px;
 }
 
@@ -987,14 +994,19 @@ function materialLabel(status: OnboardingMaterial['status']) {
   line-height: 1.55;
 }
 
-.handling-mode__options {
+.handling-mode__result {
+  display: inline-flex;
   flex: none;
-}
-
-:deep(.handling-mode__options .el-radio-button__inner) {
-  min-height: 40px;
-  padding: 10px 15px;
-  font-weight: 650;
+  min-height: 36px;
+  align-items: center;
+  padding: 0 11px;
+  border: 1px solid #93b4e6;
+  border-radius: 6px;
+  background: #eff6ff;
+  color: #1d4ed8 !important;
+  font-size: 13px !important;
+  font-weight: 750;
+  white-space: nowrap;
 }
 
 .identity-upload-grid {
@@ -1451,15 +1463,8 @@ function materialLabel(status: OnboardingMaterial['status']) {
     white-space: normal;
   }
 
-  .handling-mode__options {
-    display: grid;
-    width: 100%;
-    grid-template-columns: 1fr;
-  }
-
-  :deep(.handling-mode__options .el-radio-button),
-  :deep(.handling-mode__options .el-radio-button__inner) {
-    width: 100%;
+  .handling-mode__result {
+    align-self: flex-start;
   }
 
   .identity-upload-grid {

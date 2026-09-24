@@ -159,7 +159,7 @@ async function submit() {
           >
             <UserPlus :size="16" />首次入驻注册
           </button>
-          <p class="register-note">新主办方先完成手机号注册 实名核验与主体材料审核</p>
+          <p class="register-note">新主办方先完成手机号验证 办理身份选择 本人实名与主体材料审核</p>
         </el-form>
       </section>
     </main>

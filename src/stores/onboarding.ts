@@ -76,6 +76,7 @@ export const createApprovedOnboardingState = (): OnboardingState => {
       phone: '138****0628',
       name: '林洁',
       idNumber: '6501**********0628',
+      organizationName: '新疆星河文化传媒有限公司',
       agentIdentity: 'authorized_agent',
       authorizationConfirmed: true,
     },
@@ -185,6 +186,12 @@ function readState(): OnboardingState {
     const state: OnboardingState = {
       ...createInitialOnboardingState(),
       ...saved,
+      identity: saved.identity
+        ? {
+            ...saved.identity,
+            organizationName: saved.identity.organizationName || '',
+          }
+        : undefined,
       materials: mergeSavedMaterials(saved),
     }
     applyMaterialRequirements(state)

@@ -7,6 +7,7 @@ const authorizedAgentIdentity: RegistrationIdentity = {
   phone: '13800138000',
   name: '测试经办人',
   idNumber: '110101199001011234',
+  organizationName: '测试文化活动有限公司',
   agentIdentity: 'authorized_agent',
   authorizationConfirmed: true,
 }

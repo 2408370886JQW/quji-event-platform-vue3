@@ -34,7 +34,7 @@ export const useSessionStore = defineStore('session', () => {
         id: `local-organizer-${payload.phone}`,
         name: payload.name,
         role: 'organizer',
-        roleName: '主办方入驻经办人',
+        roleName: '主办方入驻申请人',
         organization: '待完成主体认证',
       },
     }
