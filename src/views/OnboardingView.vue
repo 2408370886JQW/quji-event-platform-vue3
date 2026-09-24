@@ -619,6 +619,7 @@ onMounted(async () => {
             v-for="material in standaloneMaterials"
             :key="material.key"
             class="onboarding-material-card"
+            :data-cy="material.key === 'business_license' ? 'business-license-card' : undefined"
             :class="{
               'is-uploaded': material.fileName,
               'is-license-card': material.key === 'business_license',
@@ -1121,6 +1122,8 @@ onMounted(async () => {
 
 .materials-content {
   display: grid;
+  grid-template-columns: minmax(0, 1.08fr) minmax(0, 0.92fr);
+  align-items: start;
   gap: 16px;
 }
 
@@ -1383,9 +1386,7 @@ onMounted(async () => {
 }
 
 .material-grid {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 16px;
+  display: contents;
 }
 
 .onboarding-material-card {
@@ -1403,7 +1404,12 @@ onMounted(async () => {
 }
 
 .onboarding-material-card.is-license-card {
-  grid-column: 1 / -1;
+  grid-column: 2;
+  grid-row: 1;
+}
+
+.onboarding-material-card.is-license-card .subject-profile__grid {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
 }
 
 .license-recognition-state {
@@ -1811,10 +1817,15 @@ onMounted(async () => {
 
 @media (max-width: 850px) {
   .identity-grid,
-  .material-grid,
+  .materials-content,
   .file-preview-detail__meta,
   .subject-profile__grid {
     grid-template-columns: 1fr;
+  }
+
+  .onboarding-material-card.is-license-card {
+    grid-column: auto;
+    grid-row: auto;
   }
 
   .subject-profile__address {

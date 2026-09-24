@@ -99,6 +99,29 @@ describe('首次入驻身份选择', () => {
 })
 
 describe('主办方身份材料', () => {
+  it('桌面端身份证在左、营业执照在右，移动端再按顺序纵向排列', () => {
+    cy.viewport(1280, 900)
+    visitOnboarding('authorized_agent')
+
+    cy.get('[data-cy="identity-material-group"]').then(($identity) => {
+      const identityRect = $identity[0].getBoundingClientRect()
+      cy.get('[data-cy="business-license-card"]').then(($license) => {
+        const licenseRect = $license[0].getBoundingClientRect()
+        expect(Math.abs(identityRect.top - licenseRect.top)).to.be.lessThan(24)
+        expect(licenseRect.left).to.be.greaterThan(identityRect.left)
+      })
+    })
+
+    cy.viewport(430, 932)
+    cy.get('[data-cy="identity-material-group"]').then(($identity) => {
+      const identityRect = $identity[0].getBoundingClientRect()
+      cy.get('[data-cy="business-license-card"]').then(($license) => {
+        const licenseRect = $license[0].getBoundingClientRect()
+        expect(licenseRect.top).to.be.greaterThan(identityRect.bottom)
+      })
+    })
+  })
+
   it('在同一张身份证材料卡内分别上传正反面并补充授权书', () => {
     visitOnboarding('authorized_agent')
 
